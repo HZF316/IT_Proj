@@ -1,42 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Our Circle</title>
+    <title>Our Circle - 主页</title>
 </head>
 <body>
-    <h1>Welcome to Our Circle</h1>
-    {% if user.is_authenticated %}
-        <p>欢迎，{{ user.username }}！
-            <form action="{% url 'logout' %}" method="post" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit">登出</button>
-            </form>
-        </p>
-    {% else %}
-        <p><a href="{% url 'login' %}">登录</a> | <a href="{% url 'register' %}">注册</a></p>
+    <h1>欢迎，{{ user.username }}！</h1>
+    {% if messages %}
+        {% for message in messages %}
+            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+        {% endfor %}
     {% endif %}
-    <h2>Topic Circles</h2>
+    <h2>最活跃的五个话题圈</h2>
     <ul>
         {% for circle in circles %}
-            <li>{{ circle.name }} (Created by: {{ circle.created_by.username }})</li>
-        {% empty %}
-            <li>No circles available.</li>
-        {% endfor %}
-    </ul>
-    <h2>Popular Posts</h2>
-    <ul>
-        {% for post in popular_posts %}
             <li>
-                {% if post.is_anonymous %}
-                    {{ post.nickname|default:"Anonymous" }}
-                {% else %}
-                    {{ post.user.username }}
-                {% endif %}
-                : {{ post.content }} - Likes: {{ post.likes }}
+                <a href="{% url 'circle_detail' circle.id %}">{{ circle.name }}</a>
+                - {{ circle.description }} (帖子数量: {{ circle.post_count }})
             </li>
         {% empty %}
-            <li>No posts yet.</li>
+            <li>暂无活跃话题圈。</li>
         {% endfor %}
     </ul>
+    <a href="{% url 'all_circles' %}">查看所有圈子</a>  <!-- 新增链接 -->
+    <a href="{% url 'logout' %}">退出登录</a>
+    <a href="{% url 'register' %}">注册</a>
 </body>
 </html>

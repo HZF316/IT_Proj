@@ -11,4 +11,5 @@ urlpatterns = [
     path('post/<int:post_id>/dislike/', views.dislike_post, name='dislike_post'),
     path('post/<int:post_id>/comment/', views.add_comment, name='add_comment'),
     path('post/<int:post_id>/report/', views.report_post, name='report_post'),
+    path('all-circles/', views.all_circles, name='all_circles'),
 ]

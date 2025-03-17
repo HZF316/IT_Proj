@@ -1,3 +1,5 @@
+from django.core.paginator import Paginator
+from django.db.models import Count, Q
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
 from django.shortcuts import render, redirect, get_object_or_404
@@ -10,9 +12,13 @@ from .forms import GUserCreationForm
 
 # 主页视图（已存在）
 def home(request):
-    circles = TopicCircle.objects.filter(is_active=True)
-    popular_posts = Post.objects.order_by('-likes')[:5]
-    return render(request, 'forum/home.html', {'circles': circles, 'popular_posts': popular_posts})
+    # circles = TopicCircle.objects.filter(is_active=True)
+    # popular_posts = Post.objects.order_by('-likes')[:5]
+    # return render(request, 'forum/home.html', {'circles': circles, 'popular_posts': popular_posts})
+    circles = TopicCircle.objects.filter(is_active=True).annotate(
+        post_count=Count('post')
+    ).order_by('-post_count')[:5]
+    return render(request, 'forum/home.html', {'circles': circles})
 
 # 注册视图
 def register(request):
@@ -135,3 +141,52 @@ def report_post(request, post_id):
             messages.error(request, '请提供举报原因！')
         return redirect('circle_detail', circle_id=post.circle.id)
     return render(request, 'forum/report_post.html', {'post': post})
+
+
+# def all_circles(request):
+#     circles = TopicCircle.objects.filter(is_active=True).annotate(
+#         post_count=Count('post')
+#     ).order_by('name')
+#     paginator = Paginator(circles, 10)  # 每页10个圈子
+#     page_number = request.GET.get('page')
+#     page_obj = paginator.get_page(page_number)
+#     return render(request, 'forum/all_circles.html', {'page_obj': page_obj})
+@login_required
+def all_circles(request):
+    # 获取排序参数
+    sort_by = request.GET.get('sort', 'name')  # 默认按名称排序
+    sort_options = {
+        'name': 'name',  # 按名称升序
+        'name_desc': '-name',  # 按名称降序
+        'post_count': '-post_count',  # 按帖子数量降序
+        'post_count_asc': 'post_count',  # 按帖子数量升序
+    }
+    sort_field = sort_options.get(sort_by, 'name')  # 默认排序字段
+
+    # 获取搜索参数
+    search_query = request.GET.get('search', '')
+
+    # 查询所有活跃圈子
+    circles = TopicCircle.objects.filter(is_active=True).annotate(
+        post_count=Count('post')
+    )
+
+    # 应用搜索过滤
+    if search_query:
+        circles = circles.filter(
+            Q(name__icontains=search_query) | Q(description__icontains=search_query)
+        )
+
+    # 应用排序
+    circles = circles.order_by(sort_field)
+
+    # 分页
+    paginator = Paginator(circles, 10)  # 每页10个圈子
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'forum/all_circles.html', {
+        'page_obj': page_obj,
+        'sort_by': sort_by,  # 传递当前排序选项
+        'search_query': search_query  # 传递当前搜索查询
+    })
