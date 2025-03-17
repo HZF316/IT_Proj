@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>管理员仪表板 - Our Circle</title>
+    <style>
+        .report-list, .circle-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .report-item, .circle-item {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>管理员仪表板</h1>
+    {% if messages %}
+        {% for message in messages %}
+            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <h2>未处理举报</h2>
+    <ul class="report-list">
+        {% for report in reports %}
+            <li class="report-item">
+                用户 {{ report.user.username }} 举报帖子:
+                <a href="{% url 'circle_detail' report.post.circle.id %}">
+                    {{ report.post.content|truncatechars:50 }}
+                </a>
+                - 原因: {{ report.reason }} - 提交于: {{ report.created_at }}
+                <a href="{% url 'report_resolve' report.id %}">标记为已处理</a> |
+                <a href="{% url 'post_delete' report.post.id %}">删除帖子</a>
+            </li>
+        {% empty %}
+            <li>暂无未处理举报。</li>
+        {% endfor %}
+    </ul>
+
+    <h2>所有圈子</h2>
+    <a href="{% url 'circle_create' %}">创建新圈子</a>
+    <ul class="circle-list">
+        {% for circle in circles %}
+            <li class="circle-item">
+                <a href="{% url 'circle_detail' circle.id %}">{{ circle.name }}</a>
+                - {{ circle.description|truncatechars:50 }} (活跃: {{ circle.is_active|yesno:"是,否" }})
+                <a href="{% url 'circle_edit' circle.id %}">编辑</a> |
+                <a href="{% url 'circle_delete' circle.id %}">删除</a>
+            </li>
+        {% empty %}
+            <li>暂无圈子。</li>
+        {% endfor %}
+    </ul>
+
+    <a href="{% url 'home' %}">返回主页</a>
+</body>
+</html>

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>处理举报 - Our Circle</title>
+</head>
+<body>
+    <h1>处理举报</h1>
+    <p>举报用户: {{ report.user.username }}</p>
+    <p>帖子内容: {{ report.post.content|truncatechars:100 }}</p>
+    <p>举报原因: {{ report.reason }}</p>
+    <p>提交时间: {{ report.created_at }}</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">标记为已处理</button>
+    </form>
+    <a href="{% url 'admin_dashboard' %}">取消</a>
+</body>
+</html>

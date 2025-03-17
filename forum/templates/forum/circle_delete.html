@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>删除圈子 - Our Circle</title>
+</head>
+<body>
+    <h1>删除圈子 - {{ circle.name }}</h1>
+    <p>确定要删除圈子 "{{ circle.name }}" 吗？此操作不可撤销！</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">确认删除</button>
+    </form>
+    <a href="{% url 'admin_dashboard' %}">取消</a>
+</body>
+</html>

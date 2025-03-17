@@ -2,14 +2,42 @@
 <html>
 <head>
     <title>Our Circle - 主页</title>
+    <style>
+        .nav-links {
+            margin-top: 10px;
+        }
+        .nav-links a, .nav-links form {
+            margin-right: 10px;
+            display: inline;
+        }
+    </style>
 </head>
 <body>
-    <h1>欢迎，{{ user.username }}！</h1>
+    <h1>Our Circle - 主页</h1>
     {% if messages %}
         {% for message in messages %}
             <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
         {% endfor %}
     {% endif %}
+
+    <!-- 根据登录状态显示入口 -->
+    <div class="nav-links">
+        {% if user.is_authenticated %}
+            <span>欢迎，{{ user.username }}！</span>
+            <a href="{% url 'profile' %}">个人资料</a>
+            {% if user.is_admin %}
+                <a href="{% url 'admin_dashboard' %}">仪表板</a>
+            {% endif %}
+            <form method="post" action="{% url 'logout' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit">退出登录</button>
+            </form>
+        {% else %}
+            <a href="{% url 'login' %}">登录</a>
+            <a href="{% url 'register' %}">注册</a>
+        {% endif %}
+    </div>
+
     <h2>最活跃的五个话题圈</h2>
     <ul>
         {% for circle in circles %}
@@ -21,8 +49,6 @@
             <li>暂无活跃话题圈。</li>
         {% endfor %}
     </ul>
-    <a href="{% url 'all_circles' %}">查看所有圈子</a>  <!-- 新增链接 -->
-    <a href="{% url 'logout' %}">退出登录</a>
-    <a href="{% url 'register' %}">注册</a>
+    <a href="{% url 'all_circles' %}">查看所有圈子</a>
 </body>
 </html>

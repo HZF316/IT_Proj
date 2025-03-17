@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import GUser
+from .models import GUser, TopicCircle
+
 
 class GUserCreationForm(UserCreationForm):
     email = forms.EmailField(required=True, label="Email")
@@ -30,3 +31,19 @@ class NicknameForm(forms.Form):
         if len(nickname.strip()) == 0:
             raise forms.ValidationError("昵称不能为空")
         return nickname
+
+class TopicCircleForm(forms.ModelForm):
+    class Meta:
+        model = TopicCircle
+        fields = ['name', 'description', 'is_active']
+        labels = {
+            'name': '圈子名称',
+            'description': '描述',
+            'is_active': '是否活跃',
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data['name']
+        if TopicCircle.objects.filter(name=name).exclude(id=self.instance.id if self.instance else None).exists():
+            raise forms.ValidationError("该圈子名称已存在！")
+        return name

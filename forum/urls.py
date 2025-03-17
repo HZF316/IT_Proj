@@ -13,4 +13,11 @@ urlpatterns = [
     path('post/<int:post_id>/report/', views.report_post, name='report_post'),
     path('all-circles/', views.all_circles, name='all_circles'),
     path('profile/', views.profile, name='profile'),
+    # 管理员功能
+    path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('admin/circle/create/', views.circle_create, name='circle_create'),
+    path('admin/circle/<int:circle_id>/edit/', views.circle_edit, name='circle_edit'),
+    path('admin/circle/<int:circle_id>/delete/', views.circle_delete, name='circle_delete'),
+    path('admin/report/<int:report_id>/resolve/', views.report_resolve, name='report_resolve'),
+    path('admin/post/<int:post_id>/delete/', views.post_delete, name='post_delete'),
 ]

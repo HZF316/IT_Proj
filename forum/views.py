@@ -1,3 +1,5 @@
+from functools import wraps
+
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import JsonResponse
@@ -7,7 +9,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import TopicCircle, Post, Comment, Report
-from .forms import GUserCreationForm, NicknameForm
+from .forms import GUserCreationForm, NicknameForm, TopicCircleForm
 
 
 # 主页视图（已存在）
@@ -226,3 +228,87 @@ def profile(request):
         'nicknames': request.user.anonymous_nicknames,
         'form': form
     })
+
+# 自定义装饰器：限制管理员访问
+def admin_required(view_func):
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_admin:
+            messages.error(request, "您没有管理员权限！")
+            return redirect('home')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+# 管理员仪表板
+@admin_required
+def admin_dashboard(request):
+    # 未处理的举报
+    reports = Report.objects.filter(is_resolved=False).order_by('-created_at')
+    # 所有圈子
+    circles = TopicCircle.objects.all().order_by('-created_at')
+    return render(request, 'forum/admin_dashboard.html', {
+        'reports': reports,
+        'circles': circles
+    })
+
+# 创建圈子
+@admin_required
+def circle_create(request):
+    if request.method == 'POST':
+        form = TopicCircleForm(request.POST)
+        if form.is_valid():
+            circle = form.save(commit=False)
+            circle.created_by = request.user
+            circle.save()
+            messages.success(request, f"圈子 '{circle.name}' 创建成功！")
+            return redirect('admin_dashboard')
+    else:
+        form = TopicCircleForm()
+    return render(request, 'forum/circle_create.html', {'form': form})
+
+# 编辑圈子
+@admin_required
+def circle_edit(request, circle_id):
+    circle = get_object_or_404(TopicCircle, id=circle_id)
+    if request.method == 'POST':
+        form = TopicCircleForm(request.POST, instance=circle)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"圈子 '{circle.name}' 更新成功！")
+            return redirect('admin_dashboard')
+    else:
+        form = TopicCircleForm(instance=circle)
+    return render(request, 'forum/circle_edit.html', {'form': form, 'circle': circle})
+
+# 删除圈子
+@admin_required
+def circle_delete(request, circle_id):
+    circle = get_object_or_404(TopicCircle, id=circle_id)
+    if request.method == 'POST':
+        circle_name = circle.name
+        circle.delete()
+        messages.success(request, f"圈子 '{circle_name}' 删除成功！")
+        return redirect('admin_dashboard')
+    return render(request, 'forum/circle_delete.html', {'circle': circle})
+
+# 处理举报
+@admin_required
+def report_resolve(request, report_id):
+    report = get_object_or_404(Report, id=report_id)
+    if request.method == 'POST':
+        report.is_resolved = True
+        report.save()
+        messages.success(request, "举报已标记为已处理！")
+        return redirect('admin_dashboard')
+    return render(request, 'forum/report_resolve.html', {'report': report})
+
+# 删除帖子
+@admin_required
+def post_delete(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    if request.method == 'POST':
+        post.delete()
+        messages.success(request, "帖子已删除！")
+        return redirect('admin_dashboard')
+    return render(request, 'forum/post_delete.html', {'post': post})
