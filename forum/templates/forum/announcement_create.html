@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>创建公告 - Our Circle</title>
+</head>
+<body>
+    <h1>创建新公告</h1>
+    {% if messages %}
+        {% for message in messages %}
+            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">创建</button>
+    </form>
+    <a href="{% url 'admin_dashboard' %}">返回仪表板</a>
+</body>
+</html>

@@ -13,6 +13,10 @@
         .search-form {
             margin: 10px 0;
         }
+        .announcement-list {
+            list-style-type: none;
+            padding: 0;
+        }
     </style>
 </head>
 <body>
@@ -39,6 +43,19 @@
             <a href="{% url 'register' %}">注册</a>
         {% endif %}
     </div>
+
+    <!-- 公告栏 -->
+    <h2>公告栏</h2>
+    <ul class="announcement-list">
+        {% for announcement in announcements %}
+            <li>
+                <a href="{% url 'announcement_detail' announcement.id %}">{{ announcement.title }}</a>
+                - 发布于: {{ announcement.created_at }}
+            </li>
+        {% empty %}
+            <li>暂无公告。</li>
+        {% endfor %}
+    </ul>
 
     <!-- 搜索框 -->
     <form class="search-form" method="get" action="{% url 'search' %}">

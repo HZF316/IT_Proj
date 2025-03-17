@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ announcement.title }} - Our Circle</title>
+    <style>
+        .announcement-content {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{ announcement.title }}</h1>
+    <p>发布者: {{ announcement.created_by.username|default:"未知" }}</p>
+    <p>发布时间: {{ announcement.created_at }}</p>
+    <div class="announcement-content">
+        {{ announcement.content|safe }}
+    </div>
+    <a href="{% url 'home' %}">返回主页</a>
+</body>
+</html>

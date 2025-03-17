@@ -20,5 +20,8 @@ urlpatterns = [
     path('admin/circle/<int:circle_id>/delete/', views.circle_delete, name='circle_delete'),
     path('admin/report/<int:report_id>/resolve/', views.report_resolve, name='report_resolve'),
     path('admin/post/<int:post_id>/delete/', views.post_delete, name='post_delete'),
+    path('admin/announcement/create/', views.announcement_create, name='announcement_create'),
+    path('announcement/<int:announcement_id>/', views.announcement_detail, name='announcement_detail'),
+    path('admin/announcement/<int:announcement_id>/manage/', views.announcement_manage, name='announcement_manage'),
     path('search/', views.search, name='search'),
 ]

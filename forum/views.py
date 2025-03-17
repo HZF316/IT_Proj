@@ -8,21 +8,55 @@ from django.contrib.auth import login, authenticate
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import TopicCircle, Post, Comment, Report
-from .forms import GUserCreationForm, NicknameForm, TopicCircleForm
+from .models import TopicCircle, Post, Comment, Report, Announcement
+from .forms import GUserCreationForm, NicknameForm, TopicCircleForm, AnnouncementForm
 
 
 # 主页视图（已存在）
-def home(request):
+# def home(request):
+#     # 获取最活跃的五个圈子
+#     circles = TopicCircle.objects.filter(is_active=True).annotate(
+#         post_count=Count('post')
+#     ).order_by('-post_count')[:5]
+#
+#     # 获取最热门的五个帖子（按点赞数排序）
+#     popular_posts = Post.objects.annotate(
+#         comment_count=Count('comment')
+#     ).order_by('-likes', '-comment_count')[:5]  # 按点赞数和评论数排序
+#
+#     # 处理搜索请求
+#     search_query = request.GET.get('search', '')
+#     search_results = None
+#     if search_query:
+#         search_results = {
+#             'circles': TopicCircle.objects.filter(
+#                 Q(name__icontains=search_query) | Q(description__icontains=search_query),
+#                 is_active=True
+#             ).annotate(post_count=Count('post')),
+#             'posts': Post.objects.filter(
+#                 Q(content__icontains=search_query)
+#             ).annotate(comment_count=Count('comment'))
+#         }
+#
+#     return render(request, 'forum/home.html', {
+#         'circles': circles,
+#         'popular_posts': popular_posts,
+#         'search_query': search_query,
+#         'search_results': search_results
+#     })
+def home(request):  # 移除 @login_required，允许未登录用户访问
     # 获取最活跃的五个圈子
     circles = TopicCircle.objects.filter(is_active=True).annotate(
         post_count=Count('post')
     ).order_by('-post_count')[:5]
 
-    # 获取最热门的五个帖子（按点赞数排序）
+    # 获取最热门的五个帖子
     popular_posts = Post.objects.annotate(
         comment_count=Count('comment')
-    ).order_by('-likes', '-comment_count')[:5]  # 按点赞数和评论数排序
+    ).order_by('-likes', '-comment_count')[:5]
+
+    # 获取所有公告
+    announcements = Announcement.objects.all()
 
     # 处理搜索请求
     search_query = request.GET.get('search', '')
@@ -41,6 +75,7 @@ def home(request):
     return render(request, 'forum/home.html', {
         'circles': circles,
         'popular_posts': popular_posts,
+        'announcements': announcements,
         'search_query': search_query,
         'search_results': search_results
     })
@@ -283,13 +318,13 @@ def admin_required(view_func):
 # 管理员仪表板
 @admin_required
 def admin_dashboard(request):
-    # 未处理的举报
     reports = Report.objects.filter(is_resolved=False).order_by('-created_at')
-    # 所有圈子
     circles = TopicCircle.objects.all().order_by('-created_at')
+    announcements = Announcement.objects.all()  # 获取所有公告
     return render(request, 'forum/admin_dashboard.html', {
         'reports': reports,
-        'circles': circles
+        'circles': circles,
+        'announcements': announcements
     })
 
 # 创建圈子
@@ -352,3 +387,54 @@ def post_delete(request, post_id):
         messages.success(request, "帖子已删除！")
         return redirect('admin_dashboard')
     return render(request, 'forum/post_delete.html', {'post': post})
+
+@admin_required
+def announcement_create(request):
+    if request.method == 'POST':
+        form = AnnouncementForm(request.POST)
+        if form.is_valid():
+            announcement = form.save(commit=False)
+            announcement.created_by = request.user
+            announcement.save()
+            messages.success(request, f"公告 '{announcement.title}' 创建成功！")
+            return redirect('admin_dashboard')
+    else:
+        form = AnnouncementForm()
+    return render(request, 'forum/announcement_create.html', {'form': form})
+
+# 公告详情
+# 公告详情
+def announcement_detail(request, announcement_id):
+    announcement = get_object_or_404(Announcement, id=announcement_id)
+    if request.user.is_authenticated and request.user.is_admin:
+        # 管理员跳转到管理页面
+        return redirect('announcement_manage', announcement_id=announcement.id)
+    return render(request, 'forum/announcement_detail.html', {'announcement': announcement})
+
+# 公告管理
+@admin_required
+def announcement_manage(request, announcement_id):
+    announcement = get_object_or_404(Announcement, id=announcement_id)
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'update':
+            form = AnnouncementForm(request.POST, instance=announcement)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "公告更新成功！")
+                return redirect('admin_dashboard')
+        elif action == 'delete':
+            announcement.delete()
+            messages.success(request, "公告已删除！")
+            return redirect('admin_dashboard')
+        elif action == 'toggle_pin':
+            announcement.is_pinned = not announcement.is_pinned
+            announcement.save()
+            messages.success(request, f"公告已{'置顶' if announcement.is_pinned else '取消置顶'}！")
+            return redirect('admin_dashboard')
+    else:
+        form = AnnouncementForm(instance=announcement)
+    return render(request, 'forum/announcement_manage.html', {
+        'form': form,
+        'announcement': announcement
+    })

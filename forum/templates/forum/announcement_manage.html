@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>管理公告 - Our Circle</title>
+</head>
+<body>
+    <h1>管理公告 - {{ announcement.title }}</h1>
+    {% if messages %}
+        {% for message in messages %}
+            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <h2>修改公告</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <input type="hidden" name="action" value="update">
+        <button type="submit">保存</button>
+    </form>
+
+    <h2>操作</h2>
+    <form method="post" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="toggle_pin">
+        <button type="submit">{{ announcement.is_pinned|yesno:"取消置顶,置顶" }}</button>
+    </form>
+    <form method="post" style="display:inline;" onsubmit="return confirm('确定删除公告？此操作不可撤销！');">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete">
+        <button type="submit">删除</button>
+    </form>
+
+    <a href="{% url 'admin_dashboard' %}">返回仪表板</a>
+</body>
+</html>

@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import GUser, TopicCircle
+from .models import GUser, TopicCircle, Announcement
 
 
 class GUserCreationForm(UserCreationForm):
@@ -47,3 +47,24 @@ class TopicCircleForm(forms.ModelForm):
         if TopicCircle.objects.filter(name=name).exclude(id=self.instance.id if self.instance else None).exists():
             raise forms.ValidationError("该圈子名称已存在！")
         return name
+
+class AnnouncementForm(forms.ModelForm):
+    class Meta:
+        model = Announcement
+        fields = ['title', 'content']
+        labels = {
+            'title': '公告标题',
+            'content': '公告内容',
+        }
+
+    def clean_title(self):
+        title = self.cleaned_data['title']
+        if not title.strip():
+            raise forms.ValidationError("公告标题不能为空")
+        return title
+
+    def clean_content(self):
+        content = self.cleaned_data['content']
+        if not content.strip():
+            raise forms.ValidationError("公告内容不能为空")
+        return content

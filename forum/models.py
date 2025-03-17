@@ -76,3 +76,16 @@ class Report(models.Model):
 
     def __str__(self):
         return f"Report on {self.post} by {self.user.username}"
+
+class Announcement(models.Model):
+    title = models.CharField(max_length=200, verbose_name="公告标题")
+    content = models.TextField(verbose_name="公告内容")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+    created_by = models.ForeignKey(GUser, on_delete=models.SET_NULL, null=True, verbose_name="创建者")
+    is_pinned = models.BooleanField(default=False, verbose_name="是否置顶")  # 新增置顶字段
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        ordering = ['-is_pinned', '-created_at']

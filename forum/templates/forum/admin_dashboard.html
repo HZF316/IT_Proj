@@ -3,11 +3,11 @@
 <head>
     <title>管理员仪表板 - Our Circle</title>
     <style>
-        .report-list, .circle-list {
+        .report-list, .circle-list, .announcement-list {
             list-style-type: none;
             padding: 0;
         }
-        .report-item, .circle-item {
+        .report-item, .circle-item, .announcement-item {
             margin: 10px 0;
         }
     </style>
@@ -49,6 +49,22 @@
             </li>
         {% empty %}
             <li>暂无圈子。</li>
+        {% endfor %}
+    </ul>
+
+    <h2>公告管理</h2>
+    <a href="{% url 'announcement_create' %}">创建新公告</a>
+    <ul class="announcement-list">
+        {% for announcement in announcements %}
+            <li class="announcement-item">
+                <a href="{% url 'announcement_manage' announcement.id %}">{{ announcement.title }}</a>
+                - {{ announcement.created_at }}
+                {% if announcement.is_pinned %}
+                    (已置顶)
+                {% endif %}
+            </li>
+        {% empty %}
+            <li>暂无公告。</li>
         {% endfor %}
     </ul>
 
