@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>发帖 - {{ circle.name }}</title>
+</head>
+<body>
+    <h1>在 {{ circle.name }} 中发帖</h1>
+    {% if messages %}
+        {% for message in messages %}
+            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+    <form method="post">
+        {% csrf_token %}
+        <textarea name="content" required placeholder="帖子内容"></textarea><br>
+        <label><input type="checkbox" name="is_anonymous"> 匿名发帖</label><br>
+        <input type="text" name="nickname" placeholder="匿名昵称（若选择匿名）" {% if not user.anonymous_nicknames %}disabled{% endif %}><br>
+        <input type="text" name="location" placeholder="位置（可选）"><br>
+        <button type="submit">发布</button>
+    </form>
+    <a href="{% url 'circle_detail' circle.id %}">返回圈子</a>
+</body>
+</html>

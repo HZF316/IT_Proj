@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ circle.name }} - Our Circle</title>
+</head>
+<body>
+    <h1>{{ circle.name }}</h1>
+    <p>{{ circle.description }}</p>
+    <p>创建者: {{ circle.created_by.username }}</p>
+    {% if user.is_authenticated %}
+        <a href="{% url 'create_post' circle.id %}">发帖</a>
+    {% else %}
+        <p>请<a href="{% url 'login' %}">登录</a>后发帖。</p>
+    {% endif %}
+    <h2>帖子列表</h2>
+    <ul>
+        {% for post in posts %}
+            <li>
+                {% if post.is_anonymous %}
+                    {{ post.nickname|default:"Anonymous" }}
+                {% else %}
+                    {{ post.user.username }}
+                {% endif %}
+                : {{ post.content }}
+                {% if post.location %} (位置: {{ post.location }}) {% endif %}
+                - 发布于: {{ post.created_at }}<br>
+                点赞: {{ post.likes }} | 踩: {{ post.dislikes }}<br>
+                {% if user.is_authenticated %}
+                    <a href="{% url 'like_post' post.id %}">点赞</a> |
+                    <a href="{% url 'dislike_post' post.id %}">踩</a> |
+                    <a href="{% url 'add_comment' post.id %}">评论</a> |
+                    <a href="{% url 'report_post' post.id %}">举报</a>
+                {% endif %}
+                <h4>评论:</h4>
+                <ul>
+                    {% for comment in post.comment_set.all %}
+                        <li>{{ comment.user.username }}: {{ comment.content }} - {{ comment.created_at }}</li>
+                    {% empty %}
+                        <li>暂无评论。</li>
+                    {% endfor %}
+                </ul>
+            </li>
+        {% empty %}
+            <li>该圈子暂无帖子。</li>
+        {% endfor %}
+    </ul>
+    <a href="{% url 'home' %}">返回主页</a>
+</body>
+</html>

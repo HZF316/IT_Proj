@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>举报 - Our Circle</title>
+</head>
+<body>
+    <h1>举报帖子</h1>
+    <p>
+        帖子内容:
+        {% if post.is_anonymous %}
+            {{ post.nickname|default:"Anonymous" }}
+        {% else %}
+            {{ post.user.username }}
+        {% endif %}
+        : {{ post.content }}
+    </p>
+    {% if messages %}
+        {% for message in messages %}
+            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+    <form method="post">
+        {% csrf_token %}
+        <textarea name="reason" required placeholder="请输入举报原因"></textarea><br>
+        <button type="submit">提交举报</button>
+    </form>
+    <a href="{% url 'circle_detail' post.circle.id %}">返回圈子</a>
+</body>
+</html>
