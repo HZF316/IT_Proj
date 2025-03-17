@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Our Circle</title>
+</head>
+<body>
+    <h1>Welcome to Our Circle</h1>
+    {% if user.is_authenticated %}
+        <p>欢迎，{{ user.username }}！
+            <form action="{% url 'logout' %}" method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit">登出</button>
+            </form>
+        </p>
+    {% else %}
+        <p><a href="{% url 'login' %}">登录</a> | <a href="{% url 'register' %}">注册</a></p>
+    {% endif %}
+    <h2>Topic Circles</h2>
+    <ul>
+        {% for circle in circles %}
+            <li>{{ circle.name }} (Created by: {{ circle.created_by.username }})</li>
+        {% empty %}
+            <li>No circles available.</li>
+        {% endfor %}
+    </ul>
+    <h2>Popular Posts</h2>
+    <ul>
+        {% for post in popular_posts %}
+            <li>
+                {% if post.is_anonymous %}
+                    {{ post.nickname|default:"Anonymous" }}
+                {% else %}
+                    {{ post.user.username }}
+                {% endif %}
+                : {{ post.content }} - Likes: {{ post.likes }}
+            </li>
+        {% empty %}
+            <li>No posts yet.</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
