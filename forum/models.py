@@ -1,6 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
+from django.contrib.auth import get_user_model
+
+#GUser = get_user_model()
 
 # 自定义用户模型 GUser
 class GUser(AbstractUser):
@@ -39,14 +42,29 @@ class Post(models.Model):
         return f"Post by {self.user.username if not self.is_anonymous else self.nickname} in {self.circle.name}"
 
 # 评论模型
+# class Comment(models.Model):
+#     user = models.ForeignKey(GUser, on_delete=models.CASCADE)
+#     post = models.ForeignKey(Post, on_delete=models.CASCADE)
+#     content = models.TextField()
+#     created_at = models.DateTimeField(auto_now_add=True)
+#
+#     def __str__(self):
+#         return f"Comment by {self.user.username} on {self.post}"
 class Comment(models.Model):
-    user = models.ForeignKey(GUser, on_delete=models.CASCADE)
+    user = models.ForeignKey('GUser', on_delete=models.CASCADE)
     post = models.ForeignKey(Post, on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    is_anonymous = models.BooleanField(default=False)  # 新增匿名字段
+    nickname = models.CharField(max_length=50, blank=True, null=True)  # 新增昵称字段
 
     def __str__(self):
-        return f"Comment by {self.user.username} on {self.post}"
+        if self.is_anonymous:
+            return f"{self.nickname or 'Anonymous'}: {self.content[:20]}"
+        return f"{self.user.username}: {self.content[:20]}"
+
+    class Meta:
+        ordering = ['-created_at']
 
 # 举报模型
 class Report(models.Model):

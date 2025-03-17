@@ -34,7 +34,14 @@
                 <h4>评论:</h4>
                 <ul>
                     {% for comment in post.comment_set.all %}
-                        <li>{{ comment.user.username }}: {{ comment.content }} - {{ comment.created_at }}</li>
+                        <li>
+                            {% if comment.is_anonymous %}
+                                {{ comment.nickname|default:"Anonymous" }}
+                            {% else %}
+                                {{ comment.user.username }}
+                            {% endif %}
+                            : {{ comment.content }} - {{ comment.created_at }}
+                        </li>
                     {% empty %}
                         <li>暂无评论。</li>
                     {% endfor %}

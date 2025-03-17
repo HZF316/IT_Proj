@@ -97,11 +97,21 @@ def add_comment(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     if request.method == 'POST':
         content = request.POST.get('content')
+        is_anonymous = request.POST.get('is_anonymous') == 'on'
+        nickname = request.POST.get('nickname') if is_anonymous else None
+
+        if is_anonymous and nickname:
+            if not request.user.anonymous_nicknames or nickname not in request.user.anonymous_nicknames:
+                messages.error(request, "请使用已绑定的匿名昵称！")
+                return render(request, 'forum/add_comment.html', {'post': post})
+
         if content:
             Comment.objects.create(
                 user=request.user,
                 post=post,
-                content=content
+                content=content,
+                is_anonymous=is_anonymous,
+                nickname=nickname
             )
             messages.success(request, '评论成功！')
         else:

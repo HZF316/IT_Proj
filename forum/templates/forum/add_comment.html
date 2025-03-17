@@ -22,6 +22,8 @@
     <form method="post">
         {% csrf_token %}
         <textarea name="content" required placeholder="请输入评论内容"></textarea><br>
+        <label><input type="checkbox" name="is_anonymous"> 匿名评论</label><br>
+        <input type="text" name="nickname" placeholder="匿名昵称（若选择匿名）" {% if not user.anonymous_nicknames %}disabled{% endif %}><br>
         <button type="submit">提交评论</button>
     </form>
     <a href="{% url 'circle_detail' post.circle.id %}">返回圈子</a>
