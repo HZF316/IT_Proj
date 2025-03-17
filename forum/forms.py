@@ -16,3 +16,17 @@ class GUserCreationForm(UserCreationForm):
         if commit:
             user.save()
         return user
+
+class NicknameForm(forms.Form):
+    nickname = forms.CharField(
+        max_length=50,
+        label="新昵称",
+        help_text="昵称长度不超过50字符",
+        required=True
+    )
+
+    def clean_nickname(self):
+        nickname = self.cleaned_data['nickname']
+        if len(nickname.strip()) == 0:
+            raise forms.ValidationError("昵称不能为空")
+        return nickname

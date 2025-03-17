@@ -7,8 +7,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import TopicCircle, Post, Comment, Report
-from .forms import GUserCreationForm
-
+from .forms import GUserCreationForm, NicknameForm
 
 
 # 主页视图（已存在）
@@ -148,54 +147,6 @@ def report_post(request, post_id):
         return redirect('circle_detail', circle_id=post.circle.id)
     return render(request, 'forum/report_post.html', {'post': post})
 
-
-# def all_circles(request):
-#     circles = TopicCircle.objects.filter(is_active=True).annotate(
-#         post_count=Count('post')
-#     ).order_by('name')
-#     paginator = Paginator(circles, 10)  # 每页10个圈子
-#     page_number = request.GET.get('page')
-#     page_obj = paginator.get_page(page_number)
-#     return render(request, 'forum/all_circles.html', {'page_obj': page_obj})
-# @login_required
-# def all_circles(request):
-#     # 获取排序参数
-#     sort_by = request.GET.get('sort', 'name')  # 默认按名称排序
-#     sort_options = {
-#         'name': 'name',  # 按名称升序
-#         'name_desc': '-name',  # 按名称降序
-#         'post_count': '-post_count',  # 按帖子数量降序
-#         'post_count_asc': 'post_count',  # 按帖子数量升序
-#     }
-#     sort_field = sort_options.get(sort_by, 'name')  # 默认排序字段
-#
-#     # 获取搜索参数
-#     search_query = request.GET.get('search', '')
-#
-#     # 查询所有活跃圈子
-#     circles = TopicCircle.objects.filter(is_active=True).annotate(
-#         post_count=Count('post')
-#     )
-#
-#     # 应用搜索过滤
-#     if search_query:
-#         circles = circles.filter(
-#             Q(name__icontains=search_query) | Q(description__icontains=search_query)
-#         )
-#
-#     # 应用排序
-#     circles = circles.order_by(sort_field)
-#
-#     # 分页
-#     paginator = Paginator(circles, 10)  # 每页10个圈子
-#     page_number = request.GET.get('page')
-#     page_obj = paginator.get_page(page_number)
-#
-#     return render(request, 'forum/all_circles.html', {
-#         'page_obj': page_obj,
-#         'sort_by': sort_by,  # 传递当前排序选项
-#         'search_query': search_query  # 传递当前搜索查询
-#     })
 @login_required
 def all_circles(request):
     sort_by = request.GET.get('sort', 'name')
@@ -245,4 +196,33 @@ def all_circles(request):
         'page_obj': page_obj,
         'sort_by': sort_by,
         'search_query': search_query
+    })
+
+@login_required
+def profile(request):
+    if request.method == 'POST':
+        form = NicknameForm(request.POST)
+        if form.is_valid():
+            nickname = form.cleaned_data['nickname']
+            user = request.user
+            if nickname not in user.anonymous_nicknames:
+                user.anonymous_nicknames.append(nickname)
+                user.save()
+                messages.success(request, f"昵称 '{nickname}' 添加成功！")
+            else:
+                messages.error(request, "该昵称已存在！")
+        else:
+            messages.error(request, "昵称无效，请检查输入。")
+    elif request.method == 'DELETE':
+        nickname = request.POST.get('nickname')  # 从 POST 数据获取要删除的昵称
+        if nickname in request.user.anonymous_nicknames:
+            request.user.anonymous_nicknames.remove(nickname)
+            request.user.save()
+            return JsonResponse({'status': 'success', 'message': f"昵称 '{nickname}' 删除成功！"})
+        return JsonResponse({'status': 'error', 'message': '昵称不存在！'}, status=400)
+
+    form = NicknameForm()
+    return render(request, 'forum/profile.html', {
+        'nicknames': request.user.anonymous_nicknames,
+        'form': form
     })

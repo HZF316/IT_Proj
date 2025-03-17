@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>个人资料 - Our Circle</title>
+    <style>
+        .nickname-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .nickname-item {
+            margin: 5px 0;
+        }
+        .delete-btn {
+            color: red;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>个人资料 - {{ user.username }}</h1>
+    {% if messages %}
+        {% for message in messages %}
+            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <h2>当前匿名昵称</h2>
+    <ul class="nickname-list">
+        {% for nick in nicknames %}
+            <li class="nickname-item">
+                {{ nick }}
+                <span class="delete-btn" onclick="deleteNickname('{{ nick }}')">删除</span>
+            </li>
+        {% empty %}
+            <li>暂无匿名昵称。</li>
+        {% endfor %}
+    </ul>
+
+    <h2>添加新昵称</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">添加昵称</button>
+    </form>
+
+    <a href="{% url 'home' %}">返回主页</a>
+
+    <script>
+        function deleteNickname(nickname) {
+            if (confirm('确定删除昵称 "' + nickname + '"？')) {
+                fetch('/profile/', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: 'nickname=' + encodeURIComponent(nickname)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert(data.message);
+                        location.reload();  // 刷新页面以更新昵称列表
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => alert('删除失败: ' + error));
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>
