@@ -10,6 +10,9 @@
             margin-right: 10px;
             display: inline;
         }
+        .search-form {
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -20,7 +23,6 @@
         {% endfor %}
     {% endif %}
 
-    <!-- 根据登录状态显示入口 -->
     <div class="nav-links">
         {% if user.is_authenticated %}
             <span>欢迎，{{ user.username }}！</span>
@@ -38,17 +40,75 @@
         {% endif %}
     </div>
 
-    <h2>最活跃的五个话题圈</h2>
-    <ul>
-        {% for circle in circles %}
-            <li>
-                <a href="{% url 'circle_detail' circle.id %}">{{ circle.name }}</a>
-                - {{ circle.description }} (帖子数量: {{ circle.post_count }})
-            </li>
-        {% empty %}
-            <li>暂无活跃话题圈。</li>
-        {% endfor %}
-    </ul>
+    <!-- 搜索框 -->
+    <form class="search-form" method="get" action="{% url 'search' %}">
+        <input type="text" name="search" value="{{ search_query }}" placeholder="搜索圈子或帖子">
+        <button type="submit">搜索</button>
+        {% if search_query and not search_results %}
+            <a href="{% url 'home' %}">清除搜索</a>
+        {% endif %}
+    </form>
+
+    {% if search_results %}
+        <h2>搜索结果</h2>
+        <h3>匹配的圈子</h3>
+        <ul>
+            {% for circle in search_results.circles %}
+                <li>
+                    <a href="{% url 'circle_detail' circle.id %}">{{ circle.name }}</a>
+                    - {{ circle.description }} (帖子数量: {{ circle.post_count }})
+                </li>
+            {% empty %}
+                <li>无匹配圈子。</li>
+            {% endfor %}
+        </ul>
+        <h3>匹配的帖子</h3>
+        <ul>
+            {% for post in search_results.posts %}
+                <li>
+                    {% if post.is_anonymous %}
+                        {{ post.nickname|default:"Anonymous" }}
+                    {% else %}
+                        {{ post.user.username }}
+                    {% endif %}
+                    : {{ post.content|truncatechars:100 }}
+                    - 评论数: {{ post.comment_count }}
+                </li>
+            {% empty %}
+                <li>无匹配帖子。</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <h2>最活跃的五个话题圈</h2>
+        <ul>
+            {% for circle in circles %}
+                <li>
+                    <a href="{% url 'circle_detail' circle.id %}">{{ circle.name }}</a>
+                    - {{ circle.description }} (帖子数量: {{ circle.post_count }})
+                </li>
+            {% empty %}
+                <li>暂无活跃话题圈。</li>
+            {% endfor %}
+        </ul>
+
+        <h2>最热门的五个帖子</h2>
+        <ul>
+            {% for post in popular_posts %}
+                <li>
+                    {% if post.is_anonymous %}
+                        {{ post.nickname|default:"Anonymous" }}
+                    {% else %}
+                        {{ post.user.username }}
+                    {% endif %}
+                    : {{ post.content|truncatechars:100 }}
+                    - 点赞: {{ post.likes }}, 评论: {{ post.comment_count }}
+                </li>
+            {% empty %}
+                <li>暂无热门帖子。</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
     <a href="{% url 'all_circles' %}">查看所有圈子</a>
 </body>
 </html>

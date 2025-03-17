@@ -20,4 +20,5 @@ urlpatterns = [
     path('admin/circle/<int:circle_id>/delete/', views.circle_delete, name='circle_delete'),
     path('admin/report/<int:report_id>/resolve/', views.report_resolve, name='report_resolve'),
     path('admin/post/<int:post_id>/delete/', views.post_delete, name='post_delete'),
+    path('search/', views.search, name='search'),
 ]

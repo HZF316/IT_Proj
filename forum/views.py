@@ -14,13 +14,53 @@ from .forms import GUserCreationForm, NicknameForm, TopicCircleForm
 
 # 主页视图（已存在）
 def home(request):
-    # circles = TopicCircle.objects.filter(is_active=True)
-    # popular_posts = Post.objects.order_by('-likes')[:5]
-    # return render(request, 'forum/home.html', {'circles': circles, 'popular_posts': popular_posts})
+    # 获取最活跃的五个圈子
     circles = TopicCircle.objects.filter(is_active=True).annotate(
         post_count=Count('post')
     ).order_by('-post_count')[:5]
-    return render(request, 'forum/home.html', {'circles': circles})
+
+    # 获取最热门的五个帖子（按点赞数排序）
+    popular_posts = Post.objects.annotate(
+        comment_count=Count('comment')
+    ).order_by('-likes', '-comment_count')[:5]  # 按点赞数和评论数排序
+
+    # 处理搜索请求
+    search_query = request.GET.get('search', '')
+    search_results = None
+    if search_query:
+        search_results = {
+            'circles': TopicCircle.objects.filter(
+                Q(name__icontains=search_query) | Q(description__icontains=search_query),
+                is_active=True
+            ).annotate(post_count=Count('post')),
+            'posts': Post.objects.filter(
+                Q(content__icontains=search_query)
+            ).annotate(comment_count=Count('comment'))
+        }
+
+    return render(request, 'forum/home.html', {
+        'circles': circles,
+        'popular_posts': popular_posts,
+        'search_query': search_query,
+        'search_results': search_results
+    })
+
+@login_required
+def search(request):
+    search_query = request.GET.get('search', '')
+    if search_query:
+        search_results = {
+            'circles': TopicCircle.objects.filter(
+                Q(name__icontains=search_query) | Q(description__icontains=search_query),
+                is_active=True
+            ).annotate(post_count=Count('post')),
+            'posts': Post.objects.filter(
+                Q(content__icontains=search_query)
+            ).annotate(comment_count=Count('comment'))
+        }
+    else:
+        search_results = {'circles': [], 'posts': []}
+    return render(request, 'forum/search_results.html', {'search_results': search_results, 'search_query': search_query})
 
 # 注册视图
 def register(request):

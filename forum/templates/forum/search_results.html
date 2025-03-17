@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Our Circle - 搜索结果</title>
+    <style>
+        .search-results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>搜索结果 - "{{ search_query }}"</h1>
+    {% if messages %}
+        {% for message in messages %}
+            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <div class="search-results">
+        <h3>匹配的圈子</h3>
+        <ul>
+            {% for circle in search_results.circles %}
+                <li>
+                    <a href="{% url 'circle_detail' circle.id %}">{{ circle.name }}</a>
+                    - {{ circle.description }} (帖子数量: {{ circle.post_count }})
+                </li>
+            {% empty %}
+                <li>无匹配圈子。</li>
+            {% endfor %}
+        </ul>
+
+        <h3>匹配的帖子</h3>
+        <ul>
+            {% for post in search_results.posts %}
+                <li>
+                    {% if post.is_anonymous %}
+                        {{ post.nickname|default:"Anonymous" }}
+                    {% else %}
+                        {{ post.user.username }}
+                    {% endif %}
+                    : {{ post.content|truncatechars:100 }}
+                    - 评论数: {{ post.comment_count }}
+                </li>
+            {% empty %}
+                <li>无匹配帖子。</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <a href="{% url 'home' %}">返回主页</a>
+</body>
+</html>
