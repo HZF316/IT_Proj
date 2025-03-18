@@ -34,4 +34,6 @@ urlpatterns = [
     path('announcement/<int:announcement_id>/', views.announcement_detail, name='announcement_detail'),
     path('admin/announcement/<int:announcement_id>/manage/', views.announcement_manage, name='announcement_manage'),
     path('search/', views.search, name='search'),
+    path('weather/', views.get_weather, name='get_weather'),
+    path('geocode/', views.geocode, name='geocode')
 ]

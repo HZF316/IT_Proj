@@ -1,31 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>评论 - Our Circle</title>
+    <title>发表评论 - Our Circle</title>
+    <style>
+        .location-section {
+            margin: 10px 0;
+        }
+    </style>
 </head>
 <body>
-    <h1>评论帖子</h1>
-    <p>
-        帖子内容:
-        {% if post.is_anonymous %}
-            {{ post.nickname|default:"Anonymous" }}
-        {% else %}
-            {{ post.user.username }}
-        {% endif %}
-        : {{ post.content }}
-    </p>
+    <h1>为帖子发表评论</h1>
     {% if messages %}
         {% for message in messages %}
             <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
         {% endfor %}
     {% endif %}
+
     <form method="post">
         {% csrf_token %}
         <textarea name="content" required placeholder="请输入评论内容"></textarea><br>
         <label><input type="checkbox" name="is_anonymous"> 匿名评论</label><br>
         <input type="text" name="nickname" placeholder="匿名昵称（若选择匿名）" {% if not user.anonymous_nicknames %}disabled{% endif %}><br>
-        <button type="submit">提交评论</button>
+
+        <!-- 定位选项 -->
+        <div class="location-section">
+            <label><input type="checkbox" name="use_location" id="use_location"> 使用当前位置</label>
+            <button type="button" id="get_location" onclick="getLocation()">获取位置</button>
+            <p id="location_status"></p>
+            <input type="hidden" name="lat" id="lat">
+            <input type="hidden" name="lon" id="lon">
+        </div>
+
+        <button type="submit">提交</button>
     </form>
-    <a href="{% url 'circle_detail' post.circle.id %}">返回圈子</a>
+    <a href="{% url 'post_detail' post.id %}">返回帖子</a>
+
+    <script>
+        function getLocation() {
+            if (!navigator.geolocation) {
+                document.getElementById('location_status').innerText = "浏览器不支持地理位置服务。";
+                return;
+            }
+            if (document.getElementById('use_location').checked) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        document.getElementById('lat').value = lat;
+                        document.getElementById('lon').value = lon;
+                        document.getElementById('location_status').innerText = `位置获取成功: Lat ${lat}, Lon ${lon}`;
+                    },
+                    function(error) {
+                        document.getElementById('location_status').innerText = "无法获取位置，请检查权限或手动输入。";
+                    }
+                );
+            } else {
+                document.getElementById('location_status').innerText = "请先勾选使用当前位置选项。";
+            }
+        }
+    </script>
 </body>
 </html>

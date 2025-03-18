@@ -38,6 +38,7 @@ class Post(models.Model):
     dislikes = models.IntegerField(default=0)
     is_pinned = models.BooleanField(default=False)
     is_recommended = models.BooleanField(default=False)
+    location = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
         return f"Post by {self.user.username if not self.is_anonymous else self.nickname} in {self.circle.name}"
@@ -51,6 +52,7 @@ class Comment(models.Model):
     nickname = models.CharField(max_length=50, blank=True, null=True)
     likes = models.IntegerField(default=0)  # 新增评论点赞数
     dislikes = models.IntegerField(default=0)  # 新增评论踩数
+    location = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
         if self.is_anonymous:

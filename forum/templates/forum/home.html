@@ -13,13 +13,18 @@
         .search-form {
             margin: 10px 0;
         }
-        .announcement-list, .post-list, .followed-circles {
+        .announcement-list, .post-list, .followed-circles, .weather-section {
             list-style-type: none;
             padding: 0;
         }
+        .weather-section {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
     </style>
 </head>
-<body>
+<body onload="getLocation()">
     <h1>Our Circle - 主页</h1>
     {% if messages %}
         {% for message in messages %}
@@ -42,6 +47,12 @@
             <a href="{% url 'login' %}">登录</a>
             <a href="{% url 'register' %}">注册</a>
         {% endif %}
+    </div>
+
+    <!-- 天气显示 -->
+    <h2>本地天气</h2>
+    <div class="weather-section" id="weather-section">
+        <p>正在加载天气数据...</p>
     </div>
 
     <!-- 公告栏 -->
@@ -163,5 +174,52 @@
     {% endif %}
 
     <a href="{% url 'all_circles' %}">查看所有圈子</a>
+
+    <script>
+        function getLocation() {
+            // 检查 URL 是否已有 lat 和 lon 参数
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('lat') && urlParams.has('lon')) {
+                return;  // 如果已加载位置参数，不再重复请求
+            }
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    // 使用 AJAX 获取天气数据
+                    fetch(`{% url 'get_weather' %}?lat=${lat}&lon=${lon}`, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        const weatherSection = document.getElementById('weather-section');
+                        if (data.status === 'success') {
+                            weatherSection.innerHTML = `
+                                <p>地点: ${data.data.name}</p>
+                                <p>温度: ${data.data.temp} °C</p>
+                                <p>天气: ${data.data.description}</p>
+                                <p>湿度: ${data.data.humidity}%</p>
+                                <p>风速: ${data.data.wind_speed} m/s</p>
+                            `;
+                        } else {
+                            weatherSection.innerHTML = `<p>${data.message}</p>`;
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById('weather-section').innerHTML = "<p>无法加载天气数据，请稍后再试。</p>";
+                    });
+                }, function(error) {
+                    console.error("获取位置失败: ", error);
+                    document.getElementById('weather-section').innerHTML = "<p>无法获取位置，请允许位置访问或稍后再试。</p>";
+                });
+            } else {
+                document.getElementById('weather-section').innerHTML = "<p>浏览器不支持地理位置服务。</p>";
+            }
+        }
+    </script>
 </body>
 </html>

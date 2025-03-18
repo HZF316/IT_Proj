@@ -12,16 +12,12 @@ from django.contrib import messages
 from .models import TopicCircle, Post, Comment, Report, Announcement, GUser, UserCircleFollow
 from .forms import GUserCreationForm, NicknameForm, TopicCircleForm, AnnouncementForm
 
-
-def admin_required(view_func):
-    @wraps(view_func)
-    @login_required
-    def wrapper(request, *args, **kwargs):
-        if not request.user.is_admin:
-            messages.error(request, "您没有管理员权限！")
-            return redirect('home')
-        return view_func(request, *args, **kwargs)
-    return wrapper
+import requests
+from django.shortcuts import render
+from django.contrib import messages
+from django.db.models import Count, Q
+from .models import TopicCircle, Post, Announcement, UserCircleFollow
+from geopy.geocoders import Nominatim
 
 def home(request):
     circles = TopicCircle.objects.filter(is_active=True).annotate(
@@ -33,7 +29,6 @@ def home(request):
     announcements = Announcement.objects.all()
     recommended_posts = Post.objects.filter(is_recommended=True).order_by('-created_at')[:5]
 
-    # 获取用户关注的圈子
     followed_circles = []
     if request.user.is_authenticated:
         followed_circles = TopicCircle.objects.filter(
@@ -63,6 +58,17 @@ def home(request):
         'search_query': search_query,
         'search_results': search_results
     })
+def admin_required(view_func):
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_admin:
+            messages.error(request, "您没有管理员权限！")
+            return redirect('home')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
 
 @login_required
 def search(request):
@@ -151,25 +157,27 @@ def create_post(request, circle_id):
         content = request.POST.get('content')
         is_anonymous = request.POST.get('is_anonymous') == 'on'
         nickname = request.POST.get('nickname') if is_anonymous else None
-        location = request.POST.get('location') if request.POST.get('location') else None
+        use_location = request.POST.get('use_location') == 'on'
+        location = None
 
-        # 验证匿名昵称是否在用户绑定的昵称列表中
+        if use_location and 'lat' in request.POST and 'lon' in request.POST:
+            lat = request.POST.get('lat')
+            lon = request.POST.get('lon')
+            geolocator = Nominatim(user_agent="our_circle_app")
+            location = geolocator.reverse((lat, lon), language='zh-CN').address if lat and lon else None
+            # 这里可以调用 Geocoding API 将经纬度转换为地址
+            location = location or f"Lat: {lat}, Lon: {lon}"  # 简单示例，可替换为真实地址
+
         if is_anonymous and nickname and nickname not in request.user.anonymous_nicknames:
             messages.error(request, "请使用已绑定的匿名昵称！")
-            return render(request, 'forum/create_post.html', {'circle': circle})
-
-        post = Post.objects.create(
-            user=request.user,
-            circle=circle,
-            content=content,
-            is_anonymous=is_anonymous,
-            nickname=nickname,
-            location=location
-        )
-        messages.success(request, '帖子创建成功！')
+            return redirect('circle_detail', circle_id=circle.id)
+        if content:
+            Post.objects.create(user=request.user, circle=circle, content=content, is_anonymous=is_anonymous, nickname=nickname, location=location)
+            messages.success(request, '帖子发布成功！')
+        else:
+            messages.error(request, '内容不能为空！')
         return redirect('circle_detail', circle_id=circle.id)
     return render(request, 'forum/create_post.html', {'circle': circle})
-
 @login_required
 def like_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
@@ -193,24 +201,27 @@ def add_comment(request, post_id):
         content = request.POST.get('content')
         is_anonymous = request.POST.get('is_anonymous') == 'on'
         nickname = request.POST.get('nickname') if is_anonymous else None
+        use_location = request.POST.get('use_location') == 'on'
+        location = None
 
-        if is_anonymous and nickname:
-            if not request.user.anonymous_nicknames or nickname not in request.user.anonymous_nicknames:
-                messages.error(request, "请使用已绑定的匿名昵称！")
-                return render(request, 'forum/add_comment.html', {'post': post})
+        if use_location and 'lat' in request.POST and 'lon' in request.POST:
+            lat = request.POST.get('lat')
+            lon = request.POST.get('lon')
+            # 这里可以调用 Geocoding API 将经纬度转换为地址
+            geolocator = Nominatim(user_agent="our_circle_app")
+            location = geolocator.reverse((lat, lon), language='zh-CN').address if lat and lon else None
+            # 如果 geopy 失败，可以保留原始格式
+            location = location or f"Lat: {lat}, Lon: {lon}"  # 简单示例，可替换为真实地址
 
+        if is_anonymous and nickname and nickname not in request.user.anonymous_nicknames:
+            messages.error(request, "请使用已绑定的匿名昵称！")
+            return redirect('post_detail', post_id=post.id)
         if content:
-            Comment.objects.create(
-                user=request.user,
-                post=post,
-                content=content,
-                is_anonymous=is_anonymous,
-                nickname=nickname
-            )
+            Comment.objects.create(user=request.user, post=post, content=content, is_anonymous=is_anonymous, nickname=nickname, location=location)
             messages.success(request, '评论成功！')
         else:
             messages.error(request, '评论内容不能为空！')
-        return redirect('circle_detail', circle_id=post.circle.id)
+        return redirect('post_detail', post_id=post.id)
     return render(request, 'forum/add_comment.html', {'post': post})
 
 @login_required
@@ -660,3 +671,52 @@ def unfollow_circle(request, circle_id):
         follow.delete()
         messages.success(request, f"已取消关注圈子 '{circle.name}'！")
     return redirect('circle_detail', circle_id=circle.id)
+
+@login_required
+def get_weather(request):
+    api_key = "f0ce8dd116d0a235d4a54eaa89c9591f"  # 替换为你的 API 密钥
+    lat = request.GET.get('lat')
+    lon = request.GET.get('lon')
+    weather_data = None
+
+    if lat and lon:
+        url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            weather_data = response.json()
+            return JsonResponse({
+                'status': 'success',
+                'data': {
+                    'name': weather_data.get('name', '未知地点'),
+                    'temp': weather_data['main']['temp'],
+                    'description': weather_data['weather'][0]['description'],
+                    'humidity': weather_data['main']['humidity'],
+                    'wind_speed': weather_data['wind']['speed'],
+                }
+            })
+        except requests.RequestException as e:
+            return JsonResponse({'status': 'error', 'message': '无法获取天气数据，请稍后再试。'}, status=500)
+    return JsonResponse({'status': 'error', 'message': '缺少位置信息。'}, status=400)
+
+@login_required
+def geocode(request):
+    lat = request.GET.get('lat')
+    lon = request.GET.get('lon')
+    api_key = "YOUR_OPENWEATHERMAP_API_KEY"  # 替换为你的 API 密钥
+
+    if lat and lon:
+        url = f"https://api.openweathermap.org/geo/1.0/reverse?lat={lat}&lon={lon}&limit=1&appid={api_key}"
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()
+            if data and len(data) > 0:
+                return JsonResponse({
+                    'status': 'success',
+                    'location': data[0].get('name', '未知地点')
+                })
+            return JsonResponse({'status': 'error', 'message': '无法解析位置信息。'}, status=400)
+        except requests.RequestException as e:
+            return JsonResponse({'status': 'error', 'message': '无法获取位置信息，请稍后再试。'}, status=500)
+    return JsonResponse({'status': 'error', 'message': '缺少位置信息。'}, status=400)
