@@ -3,12 +3,20 @@
 <head>
     <title>管理员仪表板 - Our Circle</title>
     <style>
-        .report-list, .circle-list, .announcement-list {
+        .report-list, .circle-list, .announcement-list, .stat-section {
             list-style-type: none;
             padding: 0;
         }
         .report-item, .circle-item, .announcement-item {
             margin: 10px 0;
+        }
+        .stat-section {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        .stat-buttons button {
+            margin-right: 10px;
         }
     </style>
 </head>
@@ -68,6 +76,47 @@
         {% endfor %}
     </ul>
 
+    <h2>统计数据</h2>
+    <div class="stat-section">
+        <label for="start_date">起始时间 (YYYY-MM-DD):</label>
+        <input type="date" id="start_date" name="start_date" value="{% if start_date %}{{ start_date|date:'Y-m-d' }}{% endif %}">
+        <label for="end_date">结束时间 (YYYY-MM-DD):</label>
+        <input type="date" id="end_date" name="end_date" value="{% if end_date %}{{ end_date|date:'Y-m-d' }}{% endif %}">
+        <div class="stat-buttons">
+            <button onclick="getStats('posts')">New Posts</button>
+            <button onclick="getStats('comments')">New Comments</button>
+            <button onclick="getStats('users')">New Users</button>
+        </div>
+        {% if stats is not None %}
+            <p>从
+                {% if start_date %}{{ start_date|date:'Y-m-d' }}{% else %}无指定起始时间{% endif %}
+                到
+                {% if end_date %}{{ end_date|date:'Y-m-d' }}{% else %}无指定结束时间{% endif %}
+                的统计数据:</p>
+            {% if stat_type == 'posts' %}
+                <p>新帖子数量: {{ stats }}</p>
+            {% endif %}
+            {% if stat_type == 'comments' %}
+                <p>新评论数量: {{ stats }}</p>
+            {% endif %}
+            {% if stat_type == 'users' %}
+                <p>新用户数量: {{ stats }}</p>
+            {% endif %}
+        {% endif %}
+    </div>
+
     <a href="{% url 'home' %}">返回主页</a>
+
+    <script>
+        function getStats(statType) {
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            if (!startDate || !endDate) {
+                alert('请选择起始时间和结束时间！');
+                return;
+            }
+            window.location.href = `{% url 'admin_dashboard' %}?start_date=${startDate}&end_date=${endDate}&stat_type=${statType}`;
+        }
+    </script>
 </body>
 </html>

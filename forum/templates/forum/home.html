@@ -13,7 +13,7 @@
         .search-form {
             margin: 10px 0;
         }
-        .announcement-list {
+        .announcement-list, .post-list {
             list-style-type: none;
             padding: 0;
         }
@@ -83,12 +83,14 @@
         <ul>
             {% for post in search_results.posts %}
                 <li>
-                    {% if post.is_anonymous %}
-                        {{ post.nickname|default:"Anonymous" }}
-                    {% else %}
-                        {{ post.user.username }}
-                    {% endif %}
-                    : {{ post.content|truncatechars:100 }}
+                    <a href="{% url 'post_detail' post.id %}">
+                        {% if post.is_anonymous %}
+                            {{ post.nickname|default:"Anonymous" }}
+                        {% else %}
+                            {{ post.user.username }}
+                        {% endif %}
+                        : {{ post.content|truncatechars:100 }}
+                    </a>
                     - 评论数: {{ post.comment_count }}
                 </li>
             {% empty %}
@@ -112,16 +114,37 @@
         <ul>
             {% for post in popular_posts %}
                 <li>
-                    {% if post.is_anonymous %}
-                        {{ post.nickname|default:"Anonymous" }}
-                    {% else %}
-                        {{ post.user.username }}
-                    {% endif %}
-                    : {{ post.content|truncatechars:100 }}
+                    <a href="{% url 'post_detail' post.id %}">
+                        {% if post.is_anonymous %}
+                            {{ post.nickname|default:"Anonymous" }}
+                        {% else %}
+                            {{ post.user.username }}
+                        {% endif %}
+                        : {{ post.content|truncatechars:100 }}
+                    </a>
                     - 点赞: {{ post.likes }}, 评论: {{ post.comment_count }}
                 </li>
             {% empty %}
                 <li>暂无热门帖子。</li>
+            {% endfor %}
+        </ul>
+
+        <h2>管理员推荐的五个帖子</h2>
+        <ul>
+            {% for post in recommended_posts %}
+                <li>
+                    <a href="{% url 'post_detail' post.id %}">
+                        {% if post.is_anonymous %}
+                            {{ post.nickname|default:"Anonymous" }}
+                        {% else %}
+                            {{ post.user.username }}
+                        {% endif %}
+                        : {{ post.content|truncatechars:100 }}
+                    </a>
+                    - 发布于: {{ post.created_at }}
+                </li>
+            {% empty %}
+                <li>暂无推荐帖子。</li>
             {% endfor %}
         </ul>
     {% endif %}

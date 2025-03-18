@@ -3,17 +3,20 @@
 <head>
     <title>个人资料 - Our Circle</title>
     <style>
-        .nickname-list {
+        .nickname-list, .post-list {
             list-style-type: none;
             padding: 0;
         }
-        .nickname-item {
+        .nickname-item, .post-item {
             margin: 5px 0;
         }
         .delete-btn {
             color: red;
             cursor: pointer;
             margin-left: 10px;
+        }
+        .sort-form {
+            margin: 10px 0;
         }
     </style>
 </head>
@@ -44,6 +47,38 @@
         <button type="submit">添加昵称</button>
     </form>
 
+    <h2>我的帖子</h2>
+    <!-- 排序下拉菜单 -->
+    <form class="sort-form" method="get">
+        <label for="sort">排序方式:</label>
+        <select name="sort" id="sort" onchange="this.form.submit()">
+            <option value="created_at_desc" {% if sort_by == 'created_at_desc' %}selected{% endif %}>按时间（最新优先）</option>
+            <option value="created_at_asc" {% if sort_by == 'created_at_asc' %}selected{% endif %}>按时间（最早优先）</option>
+            <option value="likes_desc" {% if sort_by == 'likes_desc' %}selected{% endif %}>按点赞数（降序）</option>
+            <option value="likes_asc" {% if sort_by == 'likes_asc' %}selected{% endif %}>按点赞数（升序）</option>
+        </select>
+    </form>
+
+    <ul class="post-list">
+        {% for post in user_posts %}
+            <li class="post-item">
+                <a href="{% url 'post_detail' post.id %}">
+                    {% if post.is_anonymous %}
+                        {{ post.nickname|default:"Anonymous" }}
+                    {% else %}
+                        {{ post.user.username }}
+                    {% endif %}
+                    : {{ post.content|truncatechars:100 }}
+                </a>
+                - 点赞: {{ post.likes }}
+                - 发布于: {{ post.created_at }}
+                <a href="{% url 'user_post_delete' post.id %}">删除</a>
+            </li>
+        {% empty %}
+            <li>暂无帖子。</li>
+        {% endfor %}
+    </ul>
+
     <a href="{% url 'home' %}">返回主页</a>
 
     <script>
@@ -61,7 +96,7 @@
                 .then(data => {
                     if (data.status === 'success') {
                         alert(data.message);
-                        location.reload();  // 刷新页面以更新昵称列表
+                        location.reload();
                     } else {
                         alert(data.message);
                     }

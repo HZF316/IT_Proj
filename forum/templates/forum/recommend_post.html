@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>推荐帖子 - Our Circle</title>
+</head>
+<body>
+    <h1>推荐帖子</h1>
+    <p>确定要{% if post.is_recommended %}取消推荐{% else %}推荐{% endif %}帖子 "{{ post.content|truncatechars:100 }}" 吗？</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">确认</button>
+    </form>
+    <a href="{% url 'post_detail' post.id %}">取消</a>
+</body>
+</html>

@@ -37,26 +37,20 @@ class Post(models.Model):
     likes = models.IntegerField(default=0)
     dislikes = models.IntegerField(default=0)
     is_pinned = models.BooleanField(default=False)
+    is_recommended = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Post by {self.user.username if not self.is_anonymous else self.nickname} in {self.circle.name}"
 
-# 评论模型
-# class Comment(models.Model):
-#     user = models.ForeignKey(GUser, on_delete=models.CASCADE)
-#     post = models.ForeignKey(Post, on_delete=models.CASCADE)
-#     content = models.TextField()
-#     created_at = models.DateTimeField(auto_now_add=True)
-#
-#     def __str__(self):
-#         return f"Comment by {self.user.username} on {self.post}"
 class Comment(models.Model):
-    user = models.ForeignKey('GUser', on_delete=models.CASCADE)
-    post = models.ForeignKey(Post, on_delete=models.CASCADE)
+    user = models.ForeignKey(GUser, on_delete=models.CASCADE)
+    post = models.ForeignKey('Post', on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    is_anonymous = models.BooleanField(default=False)  # 新增匿名字段
-    nickname = models.CharField(max_length=50, blank=True, null=True)  # 新增昵称字段
+    is_anonymous = models.BooleanField(default=False)
+    nickname = models.CharField(max_length=50, blank=True, null=True)
+    likes = models.IntegerField(default=0)  # 新增评论点赞数
+    dislikes = models.IntegerField(default=0)  # 新增评论踩数
 
     def __str__(self):
         if self.is_anonymous:

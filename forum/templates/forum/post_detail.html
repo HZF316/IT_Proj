@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ post.content|truncatechars:50 }} - Our Circle</title>
+    <style>
+        .comment-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .comment-item {
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        .sort-form {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>帖子详情</h1>
+    {% if messages %}
+        {% for message in messages %}
+            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <p>
+        作者:
+        {% if post.is_anonymous %}
+            {{ post.nickname|default:"Anonymous" }}
+        {% else %}
+            {{ post.user.username }}
+        {% endif %}
+        - 内容: {{ post.content }}
+        {% if post.location %} (位置: {{ post.location }}) {% endif %}
+        - 发布于: {{ post.created_at }}
+        - 点赞: {{ post.likes }} | 踩: {{ post.dislikes }}
+        {% if post.is_pinned %} (已置顶) {% endif %}
+        {% if post.is_recommended %} (已推荐) {% endif %}
+    </p>
+
+    {% if user.is_authenticated %}
+        <a href="{% url 'like_post' post.id %}">点赞</a> |
+        <a href="{% url 'dislike_post' post.id %}">踩</a> |
+        <a href="{% url 'add_comment' post.id %}">评论</a> |
+        <a href="{% url 'report_post' post.id %}">举报</a>
+        {% if user == post.user %}
+            <a href="{% url 'user_post_delete' post.id %}">删除</a>
+        {% endif %}
+        {% if user.is_admin %}
+            <a href="{% url 'pin_post' post.id %}">{% if post.is_pinned %}取消置顶{% else %}置顶{% endif %}</a> |
+            <a href="{% url 'admin_post_delete' post.id %}">删除</a> |
+            <a href="{% url 'recommend_post' post.id %}">{% if post.is_recommended %}取消推荐{% else %}推荐{% endif %}</a>
+        {% endif %}
+    {% endif %}
+
+    <h2>评论</h2>
+    <form class="sort-form" method="get">
+        <label for="sort">排序方式:</label>
+        <select name="sort" id="sort" onchange="this.form.submit()">
+            <option value="created_at_desc" {% if sort_by == 'created_at_desc' %}selected{% endif %}>按时间（最新优先）</option>
+            <option value="created_at_asc" {% if sort_by == 'created_at_asc' %}selected{% endif %}>按时间（最早优先）</option>
+            <option value="likes_desc" {% if sort_by == 'likes_desc' %}selected{% endif %}>按点赞数（降序）</option>
+            <option value="likes_asc" {% if sort_by == 'likes_asc' %}selected{% endif %}>按点赞数（升序）</option>
+        </select>
+    </form>
+
+    <ul class="comment-list">
+        {% for comment in comments %}
+            <li class="comment-item">
+                {% if comment.is_anonymous %}
+                    {{ comment.nickname|default:"Anonymous" }}
+                {% else %}
+                    {{ comment.user.username }}
+                {% endif %}
+                : {{ comment.content }}
+                - 发布于: {{ comment.created_at }}
+                - 点赞: {{ comment.likes }} | 踩: {{ comment.dislikes }}
+                {% if user.is_authenticated %}
+                    <a href="{% url 'like_comment' comment.id %}">点赞</a> |
+                    <a href="{% url 'dislike_comment' comment.id %}">踩</a> |
+                    <a href="{% url 'report_comment' comment.id %}">举报</a>
+                    {% if user.is_admin %}
+                        <a href="{% url 'admin_comment_delete' comment.id %}">删除</a>
+                    {% endif %}
+                {% endif %}
+            </li>
+        {% empty %}
+            <li>暂无评论。</li>
+        {% endfor %}
+    </ul>
+
+    {% if user.is_authenticated %}
+        <h3>撰写评论</h3>
+        <form method="post" action="{% url 'add_comment' post.id %}">
+            {% csrf_token %}
+            <textarea name="content" required placeholder="请输入评论内容"></textarea><br>
+            <label><input type="checkbox" name="is_anonymous"> 匿名评论</label><br>
+            <input type="text" name="nickname" placeholder="匿名昵称（若选择匿名）" {% if not user.anonymous_nicknames %}disabled{% endif %}><br>
+            <button type="submit">提交</button>
+        </form>
+    {% endif %}
+
+    <a href="{% url 'home' %}">返回主页</a>
+    {% if post.circle %}
+        <a href="{% url 'circle_detail' post.circle.id %}">返回圈子</a>
+    {% endif %}
+</body>
+</html>

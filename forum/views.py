@@ -1,64 +1,38 @@
+from django.utils import timezone
 from functools import wraps
 
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import JsonResponse
-from django.shortcuts import render, redirect
+
 from django.contrib.auth import login, authenticate
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import TopicCircle, Post, Comment, Report, Announcement
+from .models import TopicCircle, Post, Comment, Report, Announcement, GUser
 from .forms import GUserCreationForm, NicknameForm, TopicCircleForm, AnnouncementForm
 
 
-# 主页视图（已存在）
-# def home(request):
-#     # 获取最活跃的五个圈子
-#     circles = TopicCircle.objects.filter(is_active=True).annotate(
-#         post_count=Count('post')
-#     ).order_by('-post_count')[:5]
-#
-#     # 获取最热门的五个帖子（按点赞数排序）
-#     popular_posts = Post.objects.annotate(
-#         comment_count=Count('comment')
-#     ).order_by('-likes', '-comment_count')[:5]  # 按点赞数和评论数排序
-#
-#     # 处理搜索请求
-#     search_query = request.GET.get('search', '')
-#     search_results = None
-#     if search_query:
-#         search_results = {
-#             'circles': TopicCircle.objects.filter(
-#                 Q(name__icontains=search_query) | Q(description__icontains=search_query),
-#                 is_active=True
-#             ).annotate(post_count=Count('post')),
-#             'posts': Post.objects.filter(
-#                 Q(content__icontains=search_query)
-#             ).annotate(comment_count=Count('comment'))
-#         }
-#
-#     return render(request, 'forum/home.html', {
-#         'circles': circles,
-#         'popular_posts': popular_posts,
-#         'search_query': search_query,
-#         'search_results': search_results
-#     })
-def home(request):  # 移除 @login_required，允许未登录用户访问
-    # 获取最活跃的五个圈子
+def admin_required(view_func):
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_admin:
+            messages.error(request, "您没有管理员权限！")
+            return redirect('home')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+def home(request):
     circles = TopicCircle.objects.filter(is_active=True).annotate(
         post_count=Count('post')
     ).order_by('-post_count')[:5]
-
-    # 获取最热门的五个帖子
     popular_posts = Post.objects.annotate(
         comment_count=Count('comment')
     ).order_by('-likes', '-comment_count')[:5]
-
-    # 获取所有公告
     announcements = Announcement.objects.all()
+    recommended_posts = Post.objects.filter(is_recommended=True).order_by('-created_at')[:5]  # 新增推荐帖子
 
-    # 处理搜索请求
     search_query = request.GET.get('search', '')
     search_results = None
     if search_query:
@@ -76,6 +50,7 @@ def home(request):  # 移除 @login_required，允许未登录用户访问
         'circles': circles,
         'popular_posts': popular_posts,
         'announcements': announcements,
+        'recommended_posts': recommended_posts,  # 传递推荐帖子
         'search_query': search_query,
         'search_results': search_results
     })
@@ -135,8 +110,29 @@ def custom_login(request):
 @login_required
 def circle_detail(request, circle_id):
     circle = get_object_or_404(TopicCircle, id=circle_id, is_active=True)
-    posts = Post.objects.filter(circle=circle).order_by('-created_at')
-    return render(request, 'forum/circle_detail.html', {'circle': circle, 'posts': posts})
+
+    # 获取排序参数
+    sort_by = request.GET.get('sort', 'created_at_desc')  # 默认按时间倒序
+    sort_options = {
+        'created_at_desc': '-created_at',
+        'created_at_asc': 'created_at',
+        'likes_desc': '-likes',
+        'likes_asc': 'likes',
+        'comments_desc': '-comment_count',
+        'comments_asc': 'comment_count',
+    }
+    sort_field = sort_options.get(sort_by, '-created_at')
+
+    # 查询帖子，按置顶优先，然后按排序字段
+    posts = Post.objects.filter(circle=circle).annotate(
+        comment_count=Count('comment')
+    ).order_by('-is_pinned', sort_field)  # 置顶优先，然后按排序字段
+
+    return render(request, 'forum/circle_detail.html', {
+        'circle': circle,
+        'posts': posts,
+        'sort_by': sort_by
+    })
 
 @login_required
 def create_post(request, circle_id):
@@ -277,7 +273,8 @@ def all_circles(request):
 
 @login_required
 def profile(request):
-    if request.method == 'POST':
+    # 处理昵称管理
+    if request.method == 'POST' and 'nickname' in request.POST:
         form = NicknameForm(request.POST)
         if form.is_valid():
             nickname = form.cleaned_data['nickname']
@@ -291,17 +288,32 @@ def profile(request):
         else:
             messages.error(request, "昵称无效，请检查输入。")
     elif request.method == 'DELETE':
-        nickname = request.POST.get('nickname')  # 从 POST 数据获取要删除的昵称
+        nickname = request.POST.get('nickname')
         if nickname in request.user.anonymous_nicknames:
             request.user.anonymous_nicknames.remove(nickname)
             request.user.save()
             return JsonResponse({'status': 'success', 'message': f"昵称 '{nickname}' 删除成功！"})
         return JsonResponse({'status': 'error', 'message': '昵称不存在！'}, status=400)
 
+    # 获取排序参数
+    sort_by = request.GET.get('sort', 'created_at_desc')  # 默认按时间倒序
+    sort_options = {
+        'created_at_desc': '-created_at',
+        'created_at_asc': 'created_at',
+        'likes_desc': '-likes',
+        'likes_asc': 'likes',
+    }
+    sort_field = sort_options.get(sort_by, '-created_at')
+
+    # 获取用户的所有帖子
+    user_posts = Post.objects.filter(user=request.user).order_by(sort_field)
+
     form = NicknameForm()
     return render(request, 'forum/profile.html', {
         'nicknames': request.user.anonymous_nicknames,
-        'form': form
+        'form': form,
+        'user_posts': user_posts,
+        'sort_by': sort_by
     })
 
 # 自定义装饰器：限制管理员访问
@@ -320,11 +332,37 @@ def admin_required(view_func):
 def admin_dashboard(request):
     reports = Report.objects.filter(is_resolved=False).order_by('-created_at')
     circles = TopicCircle.objects.all().order_by('-created_at')
-    announcements = Announcement.objects.all()  # 获取所有公告
+    announcements = Announcement.objects.all()
+
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    stat_type = request.GET.get('stat_type')
+    stats = None
+
+    if start_date and end_date and stat_type:
+        try:
+            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').replace(hour=0, minute=0, second=0)
+            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            if start_date > end_date:
+                messages.error(request, "起始时间不能晚于结束时间！")
+            else:
+                if stat_type == 'posts':
+                    stats = Post.objects.filter(created_at__range=(start_date, end_date)).count()
+                elif stat_type == 'comments':
+                    stats = Comment.objects.filter(created_at__range=(start_date, end_date)).count()
+                elif stat_type == 'users':
+                    stats = GUser.objects.filter(date_joined__range=(start_date, end_date)).count()
+        except ValueError:
+            messages.error(request, "无效的日期格式，请使用 YYYY-MM-DD！")
+
     return render(request, 'forum/admin_dashboard.html', {
         'reports': reports,
         'circles': circles,
-        'announcements': announcements
+        'announcements': announcements,
+        'stats': stats,
+        'start_date': start_date,
+        'end_date': end_date,
+        'stat_type': stat_type
     })
 
 # 创建圈子
@@ -438,3 +476,158 @@ def announcement_manage(request, announcement_id):
         'form': form,
         'announcement': announcement
     })
+
+@login_required
+def user_post_delete(request, post_id):
+    post = get_object_or_404(Post, id=post_id, user=request.user)  # 确保只能删除自己的帖子
+    if request.method == 'POST':
+        post.delete()
+        messages.success(request, "帖子已删除！")
+        return redirect('profile')
+    return render(request, 'forum/user_post_delete.html', {'post': post})
+
+# 帖子详情
+@login_required
+def post_detail(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    sort_by = request.GET.get('sort', 'created_at_desc')
+    sort_options = {
+        'created_at_desc': '-created_at',
+        'created_at_asc': 'created_at',
+        'likes_desc': '-likes',
+        'likes_asc': 'likes',
+    }
+    sort_field = sort_options.get(sort_by, '-created_at')
+    comments = Comment.objects.filter(post=post).order_by(sort_field)
+    return render(request, 'forum/post_detail.html', {
+        'post': post,
+        'comments': comments,
+        'sort_by': sort_by
+    })
+
+# 点赞帖子
+@login_required
+def like_post(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    post.likes += 1
+    post.save()
+    return redirect('post_detail', post_id=post.id)
+
+# 踩帖子
+@login_required
+def dislike_post(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    post.dislikes += 1
+    post.save()
+    return redirect('post_detail', post_id=post.id)
+
+# 发表评论
+@login_required
+def add_comment(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    if request.method == 'POST':
+        content = request.POST.get('content')
+        is_anonymous = request.POST.get('is_anonymous') == 'on'
+        nickname = request.POST.get('nickname') if is_anonymous else None
+        if is_anonymous and nickname and nickname not in request.user.anonymous_nicknames:
+            messages.error(request, "请使用已绑定的匿名昵称！")
+            return redirect('post_detail', post_id=post.id)
+        if content:
+            Comment.objects.create(user=request.user, post=post, content=content, is_anonymous=is_anonymous, nickname=nickname)
+            messages.success(request, '评论成功！')
+        else:
+            messages.error(request, '评论内容不能为空！')
+    return redirect('post_detail', post_id=post.id)
+
+# 举报帖子
+@login_required
+def report_post(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    if request.method == 'POST':
+        reason = request.POST.get('reason')
+        if reason:
+            Report.objects.create(user=request.user, post=post, reason=reason)
+            messages.success(request, '举报已提交！')
+        else:
+            messages.error(request, '请提供举报原因！')
+    return redirect('post_detail', post_id=post.id)
+
+# 用户删除帖子
+@login_required
+def user_post_delete(request, post_id):
+    post = get_object_or_404(Post, id=post_id, user=request.user)
+    if request.method == 'POST':
+        post.delete()
+        messages.success(request, "帖子已删除！")
+        return redirect('profile')
+    return render(request, 'forum/user_post_delete.html', {'post': post})
+
+# 管理员删除帖子
+@admin_required
+def admin_post_delete(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    if request.method == 'POST':
+        post.delete()
+        messages.success(request, "帖子已删除！")
+        return redirect('admin_dashboard')
+    return render(request, 'forum/post_delete.html', {'post': post})
+
+# 置顶帖子
+@admin_required
+def pin_post(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    if request.method == 'POST':
+        post.is_pinned = not post.is_pinned
+        post.save()
+        messages.success(request, f"帖子已{'置顶' if post.is_pinned else '取消置顶'}！")
+        return redirect('post_detail', post_id=post.id)
+    return render(request, 'forum/pin_post.html', {'post': post})
+
+# 点赞评论
+@login_required
+def like_comment(request, comment_id):
+    comment = get_object_or_404(Comment, id=comment_id)
+    comment.likes += 1
+    comment.save()
+    return redirect('post_detail', post_id=comment.post.id)
+
+# 踩评论
+@login_required
+def dislike_comment(request, comment_id):
+    comment = get_object_or_404(Comment, id=comment_id)
+    comment.dislikes += 1
+    comment.save()
+    return redirect('post_detail', post_id=comment.post.id)
+
+# 举报评论
+@login_required
+def report_comment(request, comment_id):
+    comment = get_object_or_404(Comment, id=comment_id)
+    if request.method == 'POST':
+        reason = request.POST.get('reason')
+        if reason:
+            Report.objects.create(user=request.user, post=comment.post, reason=f"评论举报: {reason}")
+            messages.success(request, '举报已提交！')
+        else:
+            messages.error(request, '请提供举报原因！')
+    return redirect('post_detail', post_id=comment.post.id)
+
+# 管理员删除评论
+@admin_required
+def admin_comment_delete(request, comment_id):
+    comment = get_object_or_404(Comment, id=comment_id)
+    if request.method == 'POST':
+        comment.delete()
+        messages.success(request, "评论已删除！")
+        return redirect('post_detail', post_id=comment.post.id)
+    return render(request, 'forum/comment_delete.html', {'comment': comment})
+
+@admin_required
+def recommend_post(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    if request.method == 'POST':
+        post.is_recommended = not post.is_recommended
+        post.save()
+        messages.success(request, f"帖子已{'推荐' if post.is_recommended else '取消推荐'}！")
+        return redirect('post_detail', post_id=post.id)
+    return render(request, 'forum/recommend_post.html', {'post': post})
