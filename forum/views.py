@@ -1,23 +1,17 @@
 from django.utils import timezone
 from functools import wraps
-
 from django.core.paginator import Paginator
-from django.db.models import Count, Q
 from django.http import JsonResponse
-
 from django.contrib.auth import login, authenticate
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
 from .models import TopicCircle, Post, Comment, Report, Announcement, GUser, UserCircleFollow
 from .forms import GUserCreationForm, NicknameForm, TopicCircleForm, AnnouncementForm
-
 import requests
-from django.shortcuts import render
 from django.contrib import messages
 from django.db.models import Count, Q
-from .models import TopicCircle, Post, Announcement, UserCircleFollow
 from geopy.geocoders import Nominatim
+
 
 def home(request):
     circles = TopicCircle.objects.filter(is_active=True).annotate(
@@ -58,6 +52,8 @@ def home(request):
         'search_query': search_query,
         'search_results': search_results
     })
+
+
 def admin_required(view_func):
     @wraps(view_func)
     @login_required
@@ -66,8 +62,8 @@ def admin_required(view_func):
             messages.error(request, "您没有管理员权限！")
             return redirect('home')
         return view_func(request, *args, **kwargs)
-    return wrapper
 
+    return wrapper
 
 
 @login_required
@@ -85,7 +81,9 @@ def search(request):
         }
     else:
         search_results = {'circles': [], 'posts': []}
-    return render(request, 'forum/search_results.html', {'search_results': search_results, 'search_query': search_query})
+    return render(request, 'forum/search_results.html',
+                  {'search_results': search_results, 'search_query': search_query})
+
 
 # 注册视图
 def register(request):
@@ -102,6 +100,7 @@ def register(request):
         form = GUserCreationForm()
     return render(request, 'forum/register.html', {'form': form})
 
+
 # 自定义登录视图（可选，如果你想覆盖默认的）
 def custom_login(request):
     if request.method == 'POST':
@@ -115,6 +114,7 @@ def custom_login(request):
         else:
             messages.error(request, "用户名或密码错误。")
     return render(request, 'forum/templates/registration/templates/forum/login.html')
+
 
 #
 # @login_required
@@ -141,7 +141,8 @@ def circle_detail(request, circle_id):
     ).order_by('-is_pinned', sort_field)
 
     # 检查用户是否已关注
-    is_followed = request.user.is_authenticated and UserCircleFollow.objects.filter(user=request.user, circle=circle).exists()
+    is_followed = request.user.is_authenticated and UserCircleFollow.objects.filter(user=request.user,
+                                                                                    circle=circle).exists()
 
     return render(request, 'forum/circle_detail.html', {
         'circle': circle,
@@ -149,6 +150,7 @@ def circle_detail(request, circle_id):
         'sort_by': sort_by,
         'is_followed': is_followed
     })
+
 
 @login_required
 def create_post(request, circle_id):
@@ -172,12 +174,15 @@ def create_post(request, circle_id):
             messages.error(request, "请使用已绑定的匿名昵称！")
             return redirect('circle_detail', circle_id=circle.id)
         if content:
-            Post.objects.create(user=request.user, circle=circle, content=content, is_anonymous=is_anonymous, nickname=nickname, location=location)
+            Post.objects.create(user=request.user, circle=circle, content=content, is_anonymous=is_anonymous,
+                                nickname=nickname, location=location)
             messages.success(request, '帖子发布成功！')
         else:
             messages.error(request, '内容不能为空！')
         return redirect('circle_detail', circle_id=circle.id)
     return render(request, 'forum/create_post.html', {'circle': circle})
+
+
 @login_required
 def like_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
@@ -186,6 +191,7 @@ def like_post(request, post_id):
     messages.success(request, '点赞成功！')
     return redirect('circle_detail', circle_id=post.circle.id)
 
+
 @login_required
 def dislike_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
@@ -193,6 +199,7 @@ def dislike_post(request, post_id):
     post.save()
     messages.success(request, '已踩！')
     return redirect('circle_detail', circle_id=post.circle.id)
+
 
 @login_required
 def add_comment(request, post_id):
@@ -217,12 +224,14 @@ def add_comment(request, post_id):
             messages.error(request, "请使用已绑定的匿名昵称！")
             return redirect('post_detail', post_id=post.id)
         if content:
-            Comment.objects.create(user=request.user, post=post, content=content, is_anonymous=is_anonymous, nickname=nickname, location=location)
+            Comment.objects.create(user=request.user, post=post, content=content, is_anonymous=is_anonymous,
+                                   nickname=nickname, location=location)
             messages.success(request, '评论成功！')
         else:
             messages.error(request, '评论内容不能为空！')
         return redirect('post_detail', post_id=post.id)
     return render(request, 'forum/add_comment.html', {'post': post})
+
 
 @login_required
 def report_post(request, post_id):
@@ -240,6 +249,7 @@ def report_post(request, post_id):
             messages.error(request, '请提供举报原因！')
         return redirect('circle_detail', circle_id=post.circle.id)
     return render(request, 'forum/report_post.html', {'post': post})
+
 
 @login_required
 def all_circles(request):
@@ -292,6 +302,7 @@ def all_circles(request):
         'search_query': search_query
     })
 
+
 # 个人资料
 @login_required
 def profile(request):
@@ -338,6 +349,7 @@ def profile(request):
         'followed_circles': followed_circles
     })
 
+
 # 自定义装饰器：限制管理员访问
 def admin_required(view_func):
     @wraps(view_func)
@@ -347,7 +359,9 @@ def admin_required(view_func):
             messages.error(request, "您没有管理员权限！")
             return redirect('home')
         return view_func(request, *args, **kwargs)
+
     return wrapper
+
 
 # 管理员仪表板
 @admin_required
@@ -387,6 +401,7 @@ def admin_dashboard(request):
         'stat_type': stat_type
     })
 
+
 # 创建圈子
 @admin_required
 def circle_create(request):
@@ -402,6 +417,7 @@ def circle_create(request):
         form = TopicCircleForm()
     return render(request, 'forum/circle_create.html', {'form': form})
 
+
 # 编辑圈子
 @admin_required
 def circle_edit(request, circle_id):
@@ -416,6 +432,7 @@ def circle_edit(request, circle_id):
         form = TopicCircleForm(instance=circle)
     return render(request, 'forum/circle_edit.html', {'form': form, 'circle': circle})
 
+
 # 删除圈子
 @admin_required
 def circle_delete(request, circle_id):
@@ -426,6 +443,7 @@ def circle_delete(request, circle_id):
         messages.success(request, f"圈子 '{circle_name}' 删除成功！")
         return redirect('admin_dashboard')
     return render(request, 'forum/circle_delete.html', {'circle': circle})
+
 
 # 处理举报
 @admin_required
@@ -438,6 +456,7 @@ def report_resolve(request, report_id):
         return redirect('admin_dashboard')
     return render(request, 'forum/report_resolve.html', {'report': report})
 
+
 # 删除帖子
 @admin_required
 def post_delete(request, post_id):
@@ -447,6 +466,7 @@ def post_delete(request, post_id):
         messages.success(request, "帖子已删除！")
         return redirect('admin_dashboard')
     return render(request, 'forum/post_delete.html', {'post': post})
+
 
 @admin_required
 def announcement_create(request):
@@ -462,6 +482,7 @@ def announcement_create(request):
         form = AnnouncementForm()
     return render(request, 'forum/announcement_create.html', {'form': form})
 
+
 # 公告详情
 # 公告详情
 def announcement_detail(request, announcement_id):
@@ -470,6 +491,7 @@ def announcement_detail(request, announcement_id):
         # 管理员跳转到管理页面
         return redirect('announcement_manage', announcement_id=announcement.id)
     return render(request, 'forum/announcement_detail.html', {'announcement': announcement})
+
 
 # 公告管理
 @admin_required
@@ -499,6 +521,7 @@ def announcement_manage(request, announcement_id):
         'announcement': announcement
     })
 
+
 @login_required
 def user_post_delete(request, post_id):
     post = get_object_or_404(Post, id=post_id, user=request.user)  # 确保只能删除自己的帖子
@@ -507,6 +530,7 @@ def user_post_delete(request, post_id):
         messages.success(request, "帖子已删除！")
         return redirect('profile')
     return render(request, 'forum/user_post_delete.html', {'post': post})
+
 
 # 帖子详情
 @login_required
@@ -527,6 +551,7 @@ def post_detail(request, post_id):
         'sort_by': sort_by
     })
 
+
 # 点赞帖子
 @login_required
 def like_post(request, post_id):
@@ -535,6 +560,7 @@ def like_post(request, post_id):
     post.save()
     return redirect('post_detail', post_id=post.id)
 
+
 # 踩帖子
 @login_required
 def dislike_post(request, post_id):
@@ -542,6 +568,7 @@ def dislike_post(request, post_id):
     post.dislikes += 1
     post.save()
     return redirect('post_detail', post_id=post.id)
+
 
 # 发表评论
 @login_required
@@ -555,11 +582,13 @@ def add_comment(request, post_id):
             messages.error(request, "请使用已绑定的匿名昵称！")
             return redirect('post_detail', post_id=post.id)
         if content:
-            Comment.objects.create(user=request.user, post=post, content=content, is_anonymous=is_anonymous, nickname=nickname)
+            Comment.objects.create(user=request.user, post=post, content=content, is_anonymous=is_anonymous,
+                                   nickname=nickname)
             messages.success(request, '评论成功！')
         else:
             messages.error(request, '评论内容不能为空！')
     return redirect('post_detail', post_id=post.id)
+
 
 # 举报帖子
 @login_required
@@ -574,6 +603,7 @@ def report_post(request, post_id):
             messages.error(request, '请提供举报原因！')
     return redirect('post_detail', post_id=post.id)
 
+
 # 用户删除帖子
 @login_required
 def user_post_delete(request, post_id):
@@ -584,6 +614,7 @@ def user_post_delete(request, post_id):
         return redirect('profile')
     return render(request, 'forum/user_post_delete.html', {'post': post})
 
+
 # 管理员删除帖子
 @admin_required
 def admin_post_delete(request, post_id):
@@ -593,6 +624,7 @@ def admin_post_delete(request, post_id):
         messages.success(request, "帖子已删除！")
         return redirect('admin_dashboard')
     return render(request, 'forum/post_delete.html', {'post': post})
+
 
 # 置顶帖子
 @admin_required
@@ -605,6 +637,7 @@ def pin_post(request, post_id):
         return redirect('post_detail', post_id=post.id)
     return render(request, 'forum/pin_post.html', {'post': post})
 
+
 # 点赞评论
 @login_required
 def like_comment(request, comment_id):
@@ -613,6 +646,7 @@ def like_comment(request, comment_id):
     comment.save()
     return redirect('post_detail', post_id=comment.post.id)
 
+
 # 踩评论
 @login_required
 def dislike_comment(request, comment_id):
@@ -620,6 +654,7 @@ def dislike_comment(request, comment_id):
     comment.dislikes += 1
     comment.save()
     return redirect('post_detail', post_id=comment.post.id)
+
 
 # 举报评论
 @login_required
@@ -634,6 +669,7 @@ def report_comment(request, comment_id):
             messages.error(request, '请提供举报原因！')
     return redirect('post_detail', post_id=comment.post.id)
 
+
 # 管理员删除评论
 @admin_required
 def admin_comment_delete(request, comment_id):
@@ -643,6 +679,7 @@ def admin_comment_delete(request, comment_id):
         messages.success(request, "评论已删除！")
         return redirect('post_detail', post_id=comment.post.id)
     return render(request, 'forum/comment_delete.html', {'comment': comment})
+
 
 @admin_required
 def recommend_post(request, post_id):
@@ -654,6 +691,7 @@ def recommend_post(request, post_id):
         return redirect('post_detail', post_id=post.id)
     return render(request, 'forum/recommend_post.html', {'post': post})
 
+
 @login_required
 def follow_circle(request, circle_id):
     circle = get_object_or_404(TopicCircle, id=circle_id, is_active=True)
@@ -661,6 +699,7 @@ def follow_circle(request, circle_id):
         UserCircleFollow.objects.create(user=request.user, circle=circle)
         messages.success(request, f"已关注圈子 '{circle.name}'！")
     return redirect('circle_detail', circle_id=circle.id)
+
 
 # 取消关注圈子
 @login_required
@@ -671,6 +710,7 @@ def unfollow_circle(request, circle_id):
         follow.delete()
         messages.success(request, f"已取消关注圈子 '{circle.name}'！")
     return redirect('circle_detail', circle_id=circle.id)
+
 
 @login_required
 def get_weather(request):
@@ -698,6 +738,7 @@ def get_weather(request):
         except requests.RequestException as e:
             return JsonResponse({'status': 'error', 'message': '无法获取天气数据，请稍后再试。'}, status=500)
     return JsonResponse({'status': 'error', 'message': '缺少位置信息。'}, status=400)
+
 
 @login_required
 def geocode(request):
