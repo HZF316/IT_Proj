@@ -3,7 +3,7 @@
 <head>
     <title>个人资料 - Our Circle</title>
     <style>
-        .nickname-list, .post-list {
+        .nickname-list, .post-list, .followed-circles {
             list-style-type: none;
             padding: 0;
         }
@@ -48,7 +48,6 @@
     </form>
 
     <h2>我的帖子</h2>
-    <!-- 排序下拉菜单 -->
     <form class="sort-form" method="get">
         <label for="sort">排序方式:</label>
         <select name="sort" id="sort" onchange="this.form.submit()">
@@ -76,6 +75,19 @@
             </li>
         {% empty %}
             <li>暂无帖子。</li>
+        {% endfor %}
+    </ul>
+
+    <h2>我关注的圈子</h2>
+    <ul class="followed-circles">
+        {% for circle in followed_circles %}
+            <li>
+                <a href="{% url 'circle_detail' circle.id %}">{{ circle.name }}</a>
+                - 帖子数量: {{ circle.post_count }}
+                <a href="{% url 'unfollow_circle' circle.id %}">取消关注</a>
+            </li>
+        {% empty %}
+            <li>暂无关注的圈子，请前往圈子页面关注。</li>
         {% endfor %}
     </ul>
 

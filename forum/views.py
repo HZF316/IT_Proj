@@ -9,7 +9,7 @@ from django.contrib.auth import login, authenticate
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import TopicCircle, Post, Comment, Report, Announcement, GUser
+from .models import TopicCircle, Post, Comment, Report, Announcement, GUser, UserCircleFollow
 from .forms import GUserCreationForm, NicknameForm, TopicCircleForm, AnnouncementForm
 
 
@@ -31,7 +31,15 @@ def home(request):
         comment_count=Count('comment')
     ).order_by('-likes', '-comment_count')[:5]
     announcements = Announcement.objects.all()
-    recommended_posts = Post.objects.filter(is_recommended=True).order_by('-created_at')[:5]  # 新增推荐帖子
+    recommended_posts = Post.objects.filter(is_recommended=True).order_by('-created_at')[:5]
+
+    # 获取用户关注的圈子
+    followed_circles = []
+    if request.user.is_authenticated:
+        followed_circles = TopicCircle.objects.filter(
+            usercirclefollow__user=request.user,
+            is_active=True
+        ).annotate(post_count=Count('post'))
 
     search_query = request.GET.get('search', '')
     search_results = None
@@ -50,7 +58,8 @@ def home(request):
         'circles': circles,
         'popular_posts': popular_posts,
         'announcements': announcements,
-        'recommended_posts': recommended_posts,  # 传递推荐帖子
+        'recommended_posts': recommended_posts,
+        'followed_circles': followed_circles,
         'search_query': search_query,
         'search_results': search_results
     })
@@ -110,9 +119,7 @@ def custom_login(request):
 @login_required
 def circle_detail(request, circle_id):
     circle = get_object_or_404(TopicCircle, id=circle_id, is_active=True)
-
-    # 获取排序参数
-    sort_by = request.GET.get('sort', 'created_at_desc')  # 默认按时间倒序
+    sort_by = request.GET.get('sort', 'created_at_desc')
     sort_options = {
         'created_at_desc': '-created_at',
         'created_at_asc': 'created_at',
@@ -123,15 +130,18 @@ def circle_detail(request, circle_id):
     }
     sort_field = sort_options.get(sort_by, '-created_at')
 
-    # 查询帖子，按置顶优先，然后按排序字段
     posts = Post.objects.filter(circle=circle).annotate(
         comment_count=Count('comment')
-    ).order_by('-is_pinned', sort_field)  # 置顶优先，然后按排序字段
+    ).order_by('-is_pinned', sort_field)
+
+    # 检查用户是否已关注
+    is_followed = request.user.is_authenticated and UserCircleFollow.objects.filter(user=request.user, circle=circle).exists()
 
     return render(request, 'forum/circle_detail.html', {
         'circle': circle,
         'posts': posts,
-        'sort_by': sort_by
+        'sort_by': sort_by,
+        'is_followed': is_followed
     })
 
 @login_required
@@ -271,22 +281,35 @@ def all_circles(request):
         'search_query': search_query
     })
 
+# 个人资料
 @login_required
 def profile(request):
-    # 处理昵称管理
+    sort_by = request.GET.get('sort', 'created_at_desc')
+    sort_options = {
+        'created_at_desc': '-created_at',
+        'created_at_asc': 'created_at',
+        'likes_desc': '-likes',
+        'likes_asc': 'likes',
+    }
+    sort_field = sort_options.get(sort_by, '-created_at')
+    user_posts = Post.objects.filter(user=request.user).order_by(sort_field)
+
+    # 获取用户关注的圈子
+    followed_circles = TopicCircle.objects.filter(
+        usercirclefollow__user=request.user,
+        is_active=True
+    ).annotate(post_count=Count('post'))
+
     if request.method == 'POST' and 'nickname' in request.POST:
         form = NicknameForm(request.POST)
         if form.is_valid():
             nickname = form.cleaned_data['nickname']
-            user = request.user
-            if nickname not in user.anonymous_nicknames:
-                user.anonymous_nicknames.append(nickname)
-                user.save()
+            if nickname not in request.user.anonymous_nicknames:
+                request.user.anonymous_nicknames.append(nickname)
+                request.user.save()
                 messages.success(request, f"昵称 '{nickname}' 添加成功！")
             else:
                 messages.error(request, "该昵称已存在！")
-        else:
-            messages.error(request, "昵称无效，请检查输入。")
     elif request.method == 'DELETE':
         nickname = request.POST.get('nickname')
         if nickname in request.user.anonymous_nicknames:
@@ -295,25 +318,13 @@ def profile(request):
             return JsonResponse({'status': 'success', 'message': f"昵称 '{nickname}' 删除成功！"})
         return JsonResponse({'status': 'error', 'message': '昵称不存在！'}, status=400)
 
-    # 获取排序参数
-    sort_by = request.GET.get('sort', 'created_at_desc')  # 默认按时间倒序
-    sort_options = {
-        'created_at_desc': '-created_at',
-        'created_at_asc': 'created_at',
-        'likes_desc': '-likes',
-        'likes_asc': 'likes',
-    }
-    sort_field = sort_options.get(sort_by, '-created_at')
-
-    # 获取用户的所有帖子
-    user_posts = Post.objects.filter(user=request.user).order_by(sort_field)
-
     form = NicknameForm()
     return render(request, 'forum/profile.html', {
         'nicknames': request.user.anonymous_nicknames,
         'form': form,
         'user_posts': user_posts,
-        'sort_by': sort_by
+        'sort_by': sort_by,
+        'followed_circles': followed_circles
     })
 
 # 自定义装饰器：限制管理员访问
@@ -631,3 +642,21 @@ def recommend_post(request, post_id):
         messages.success(request, f"帖子已{'推荐' if post.is_recommended else '取消推荐'}！")
         return redirect('post_detail', post_id=post.id)
     return render(request, 'forum/recommend_post.html', {'post': post})
+
+@login_required
+def follow_circle(request, circle_id):
+    circle = get_object_or_404(TopicCircle, id=circle_id, is_active=True)
+    if not UserCircleFollow.objects.filter(user=request.user, circle=circle).exists():
+        UserCircleFollow.objects.create(user=request.user, circle=circle)
+        messages.success(request, f"已关注圈子 '{circle.name}'！")
+    return redirect('circle_detail', circle_id=circle.id)
+
+# 取消关注圈子
+@login_required
+def unfollow_circle(request, circle_id):
+    circle = get_object_or_404(TopicCircle, id=circle_id, is_active=True)
+    follow = UserCircleFollow.objects.filter(user=request.user, circle=circle)
+    if follow.exists():
+        follow.delete()
+        messages.success(request, f"已取消关注圈子 '{circle.name}'！")
+    return redirect('circle_detail', circle_id=circle.id)

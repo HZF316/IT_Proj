@@ -29,12 +29,16 @@
 
     {% if user.is_authenticated %}
         <a href="{% url 'create_post' circle.id %}">发帖</a>
+        {% if is_followed %}
+            <a href="{% url 'unfollow_circle' circle.id %}">取消关注</a>
+        {% else %}
+            <a href="{% url 'follow_circle' circle.id %}">关注圈子</a>
+        {% endif %}
     {% else %}
-        <p>请<a href="{% url 'login' %}">登录</a>后发帖。</p>
+        <p>请<a href="{% url 'login' %}">登录</a>后发帖或关注。</p>
     {% endif %}
 
     <h2>帖子列表</h2>
-    <!-- 排序下拉菜单 -->
     <form class="sort-form" method="get">
         <label for="sort">排序方式:</label>
         <select name="sort" id="sort" onchange="this.form.submit()">

@@ -83,3 +83,16 @@ class Announcement(models.Model):
 
     class Meta:
         ordering = ['-is_pinned', '-created_at']
+
+class UserCircleFollow(models.Model):
+    user = models.ForeignKey(GUser, on_delete=models.CASCADE, verbose_name="用户")
+    circle = models.ForeignKey('TopicCircle', on_delete=models.CASCADE, verbose_name="圈子")
+    followed_at = models.DateTimeField(auto_now_add=True, verbose_name="关注时间")
+
+    class Meta:
+        unique_together = ('user', 'circle')
+        verbose_name = "用户圈子关注"
+        verbose_name_plural = "用户圈子关注"
+
+    def __str__(self):
+        return f"{self.user.username} 关注 {self.circle.name}"
