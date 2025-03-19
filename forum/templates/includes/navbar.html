@@ -1,0 +1,82 @@
+{% load static %}
+<!-- navigation bar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+        <!-- Logo -->
+        <a class="navbar-brand" href="{% url 'home' %}">UofGCircle</a>
+        <!-- react button -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <!-- content -->
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <!-- homepage -->
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home' %}">Home</a>
+                </li>
+                <!-- Admin Dashboard（only for admin user） -->
+                {% if user.is_authenticated and user.is_admin %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'admin_dashboard' %}">Admin Dashboard</a>
+                    </li>
+                {% endif %}
+                <!-- weather） -->
+                <li class="nav-item">
+                    <span class="nav-link">
+                        <i class="bi bi-sun"></i> <span id="weather-info">加载中...</span>
+                    </span>
+                </li>
+                <!-- language -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Language
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="languageDropdown">
+                        <li><a class="dropdown-item" href="?lang=zh">中文</a></li>
+                        <li><a class="dropdown-item" href="?lang=en">English</a></li>
+                    </ul>
+                </li>
+            </ul>
+            <!-- search -->
+            <form class="d-flex me-3" method="get" action="{% url 'search' %}">
+                <input class="form-control me-2" type="search" name="q" placeholder="Search..." aria-label="Search">
+                <button class="btn btn-outline-success" type="submit">Search</button>
+            </form>
+            <!-- dynamic: login/register profile logout -->
+            <ul class="navbar-nav">
+                {% if user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'profile' %}">Profile</a>
+                    </li>
+                    <li class="nav-item">
+                        <form method="post" action="{% url 'logout' %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="nav-link btn btn-link">Logout</button>
+                        </form>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'login' %}">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'register' %}">Register</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
+<script src="{% static 'js/navbar.js' %}"></script>
+<!-- personal style -->
+<style>
+    .navbar.navbar-light {
+        background-color: #ADD8E6;
+    }
+    .bg-light {
+        background-color: #ADD8E6 !important;
+    }
+    .navbar-brand {
+        font-weight: bold;
+    }
+</style>

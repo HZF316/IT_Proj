@@ -3,13 +3,11 @@ from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 
-#GUser = get_user_model()
 
-# 自定义用户模型 GUser
 class GUser(AbstractUser):
-    email = models.EmailField(unique=True)  # 邮箱作为唯一标识
-    anonymous_nicknames = models.JSONField(default=list, blank=True)  # 存储多个匿名昵称
-    is_admin = models.BooleanField(default=False)  # 区分普通用户和管理员
+    email = models.EmailField(unique=True)
+    anonymous_nicknames = models.JSONField(default=list, blank=True)  # store many nicknames
+    is_admin = models.BooleanField(default=False)
 
     def __str__(self):
         return self.username
@@ -19,7 +17,7 @@ class TopicCircle(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(GUser, on_delete=models.SET_NULL, null=True, limit_choices_to={'is_admin': True})  # 仅管理员创建
+    created_by = models.ForeignKey(GUser, on_delete=models.SET_NULL, null=True, limit_choices_to={'is_admin': True})  # only admin user can do this
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -31,8 +29,8 @@ class Post(models.Model):
     circle = models.ForeignKey(TopicCircle, on_delete=models.CASCADE)
     content = models.TextField()
     is_anonymous = models.BooleanField(default=False)
-    nickname = models.CharField(max_length=50, blank=True, null=True)  # 匿名时使用
-    location = models.CharField(max_length=100, blank=True, null=True)  # 可选实时位置
+    nickname = models.CharField(max_length=50, blank=True, null=True)  # used when want to be anonymous
+    location = models.CharField(max_length=100, blank=True, null=True)  # real time location
     created_at = models.DateTimeField(auto_now_add=True)
     likes = models.IntegerField(default=0)
     dislikes = models.IntegerField(default=0)
@@ -50,8 +48,8 @@ class Comment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     is_anonymous = models.BooleanField(default=False)
     nickname = models.CharField(max_length=50, blank=True, null=True)
-    likes = models.IntegerField(default=0)  # 新增评论点赞数
-    dislikes = models.IntegerField(default=0)  # 新增评论踩数
+    likes = models.IntegerField(default=0)  # new likes
+    dislikes = models.IntegerField(default=0)  # new comments
     location = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
@@ -74,11 +72,11 @@ class Report(models.Model):
         return f"Report on {self.post} by {self.user.username}"
 
 class Announcement(models.Model):
-    title = models.CharField(max_length=200, verbose_name="公告标题")
-    content = models.TextField(verbose_name="公告内容")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
-    created_by = models.ForeignKey(GUser, on_delete=models.SET_NULL, null=True, verbose_name="创建者")
-    is_pinned = models.BooleanField(default=False, verbose_name="是否置顶")  # 新增置顶字段
+    title = models.CharField(max_length=200, verbose_name="Announcement Title")
+    content = models.TextField(verbose_name="Announcement Content")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    created_by = models.ForeignKey(GUser, on_delete=models.SET_NULL, null=True, verbose_name="Created By")
+    is_pinned = models.BooleanField(default=False, verbose_name="Whether pin")
 
     def __str__(self):
         return self.title
@@ -87,14 +85,14 @@ class Announcement(models.Model):
         ordering = ['-is_pinned', '-created_at']
 
 class UserCircleFollow(models.Model):
-    user = models.ForeignKey(GUser, on_delete=models.CASCADE, verbose_name="用户")
-    circle = models.ForeignKey('TopicCircle', on_delete=models.CASCADE, verbose_name="圈子")
-    followed_at = models.DateTimeField(auto_now_add=True, verbose_name="关注时间")
+    user = models.ForeignKey(GUser, on_delete=models.CASCADE, verbose_name="GUser")
+    circle = models.ForeignKey('TopicCircle', on_delete=models.CASCADE, verbose_name="Circle")
+    followed_at = models.DateTimeField(auto_now_add=True, verbose_name="Followed At")
 
     class Meta:
         unique_together = ('user', 'circle')
-        verbose_name = "用户圈子关注"
-        verbose_name_plural = "用户圈子关注"
+        verbose_name = "User Circle Follow"
+        verbose_name_plural = "User Circle Follow"
 
     def __str__(self):
-        return f"{self.user.username} 关注 {self.circle.name}"
+        return f"{self.user.username} follow {self.circle.name}"

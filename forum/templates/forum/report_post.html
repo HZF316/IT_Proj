@@ -1,29 +1,55 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>举报 - Our Circle</title>
-</head>
-<body>
-    <h1>举报帖子</h1>
-    <p>
-        帖子内容:
-        {% if post.is_anonymous %}
-            {{ post.nickname|default:"Anonymous" }}
-        {% else %}
-            {{ post.user.username }}
-        {% endif %}
-        : {{ post.content }}
-    </p>
-    {% if messages %}
-        {% for message in messages %}
-            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
-    <form method="post">
-        {% csrf_token %}
-        <textarea name="reason" required placeholder="请输入举报原因"></textarea><br>
-        <button type="submit">提交举报</button>
-    </form>
-    <a href="{% url 'circle_detail' post.circle.id %}">返回圈子</a>
-</body>
-</html>
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Report Post{% endblock %}
+
+{% block content %}
+<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center">
+    <div class="row w-100">
+        <div class="col-lg-6 col-md-8 col-sm-10 mx-auto">
+            <!-- Message Prompt -->
+            {% if messages %}
+                <div class="alert alert-dismissible fade show" role="alert">
+                    {% for message in messages %}
+                        <div class="alert-{{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endif %}
+
+            <!-- Report Card -->
+            <div class="card shadow">
+                <div class="card-header bg-warning text-white text-center">
+                    <h4 class="mb-0">Report Post</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'report_post' post.id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="reason" class="form-label">Reason for Report</label>
+                            <select class="form-select" id="reason" name="reason" required>
+                                <option value="">Please select a reason</option>
+                                <option value="spam">Spam</option>
+                                <option value="harassment">Harassment</option>
+                                <option value="hate_speech">Hate Speech</option>
+                                <option value="inappropriate_content">Inappropriate Content</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Detailed Description (Optional)</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Submit Report</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{% url 'post_detail' post.id %}" class="btn btn-secondary">Back to Post</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

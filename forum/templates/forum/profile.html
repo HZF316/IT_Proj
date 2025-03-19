@@ -1,136 +1,125 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>个人资料 - Our Circle</title>
-    <style>
-        .nickname-list, .post-list, .followed-circles {
-            list-style-type: none;
-            padding: 0;
-        }
-        .nickname-item, .post-item {
-            margin: 5px 0;
-        }
-        .delete-btn {
-            color: red;
-            cursor: pointer;
-            margin-left: 10px;
-        }
-        .sort-form {
-            margin: 10px 0;
-        }
-    </style>
-</head>
-<body>
-    <h1>个人资料 - {{ user.username }}</h1>
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Profile - UofGCircle{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="{% static 'css/profile.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid min-vh-100">
+    <!-- Display Message Prompt -->
     {% if messages %}
-        {% for message in messages %}
-            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
-        {% endfor %}
+        <div class="alert alert-dismissible fade show" role="alert">
+            {% for message in messages %}
+                <div class="alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     {% endif %}
 
-    <h2>当前匿名昵称</h2>
-    <ul class="nickname-list">
-        {% for nick in nicknames %}
-            <li class="nickname-item">
-                {{ nick }}
-                <span class="delete-btn" onclick="deleteNickname('{{ nick }}')">删除</span>
-            </li>
-        {% empty %}
-            <li>暂无匿名昵称。</li>
-        {% endfor %}
-    </ul>
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- User Information Card -->
+            <div class="card shadow mb-4 profile-info">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">{{ user.username }}'s Profile</h4>
+                </div>
+                <div class="card-body">
+                    <p><strong>Email:</strong> {{ user.email }}</p>
+                    <!-- More information can be added here -->
+                </div>
+            </div>
 
-    <h2>添加新昵称</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">添加昵称</button>
-    </form>
+            <!-- Published Posts -->
+            <div class="card shadow mb-4 posts-list">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">My Posts</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Sort Options -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6>Post List</h6>
+                        <div class="dropdown">
+                            <button class="btn btn-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                Sort By: {{ sort_by|title }}
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                                <li><a class="dropdown-item" href="?sort=created_at_desc">Most Recent</a></li>
+                                <li><a class="dropdown-item" href="?sort=created_at_asc">Oldest</a></li>
+                                <li><a class="dropdown-item" href="?sort=likes_desc">Most Likes</a></li>
+                                <li><a class="dropdown-item" href="?sort=likes_asc">Fewest Likes</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- Post List -->
+                    <div class="list-group">
+                        {% for post in user_posts %}
+                            <div class="list-group-item">
+                                <h6><a href="{% url 'post_detail' post.id %}">{{ post.content|truncatechars:50 }}</a></h6>
+                                <small class="text-muted">
+                                    Published Time: {{ post.created_at|date:"Y-m-d H:i" }} · Likes: {{ post.likes }}
+                                </small>
+                                <a href="{% url 'user_post_delete' post.id %}" class="btn btn-sm btn-danger ms-2">Delete</a>
+                            </div>
+                        {% empty %}
+                            <div class="text-center text-muted py-3">No posts yet</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
 
-    <h2>我的帖子</h2>
-    <form class="sort-form" method="get">
-        <label for="sort">排序方式:</label>
-        <select name="sort" id="sort" onchange="this.form.submit()">
-            <option value="created_at_desc" {% if sort_by == 'created_at_desc' %}selected{% endif %}>按时间（最新优先）</option>
-            <option value="created_at_asc" {% if sort_by == 'created_at_asc' %}selected{% endif %}>按时间（最早优先）</option>
-            <option value="likes_desc" {% if sort_by == 'likes_desc' %}selected{% endif %}>按点赞数（降序）</option>
-            <option value="likes_asc" {% if sort_by == 'likes_asc' %}selected{% endif %}>按点赞数（升序）</option>
-        </select>
-    </form>
+            <!-- Followed Circles -->
+            <div class="card shadow mb-4 followed-circles">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Circles I Follow</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for circle in followed_circles %}
+                            <a href="{% url 'circle_detail' circle.id %}" class="list-group-item list-group-item-action">
+                                #{{ circle.name }} (Post Count: {{ circle.post_count }})
+                            </a>
+                        {% empty %}
+                            <div class="text-center text-muted py-3">Not following any circles yet</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
 
-    <ul class="post-list">
-        {% for post in user_posts %}
-            <li class="post-item">
-                <a href="{% url 'post_detail' post.id %}">
-                    {% if post.is_anonymous %}
-                        {{ post.nickname|default:"Anonymous" }}
-                    {% else %}
-                        {{ post.user.username }}
-                    {% endif %}
-                    : {{ post.content|truncatechars:100 }}
-                </a>
-                - 点赞: {{ post.likes }}
-                - 发布于: {{ post.created_at }}
-                <a href="{% url 'user_post_delete' post.id %}">删除</a>
-            </li>
-        {% empty %}
-            <li>暂无帖子。</li>
-        {% endfor %}
-    </ul>
-
-    <h2>我关注的圈子</h2>
-    <ul class="followed-circles">
-        {% for circle in followed_circles %}
-            <li>
-                <a href="{% url 'circle_detail' circle.id %}">{{ circle.name }}</a>
-                - 帖子数量: {{ circle.post_count }}
-                <a href="{% url 'unfollow_circle' circle.id %}">取消关注</a>
-            </li>
-        {% empty %}
-            <li>暂无关注的圈子，请前往圈子页面关注。</li>
-        {% endfor %}
-    </ul>
-
-    <a href="{% url 'home' %}">返回主页</a>
-
-    <script>
-        function deleteNickname(nickname) {
-            if (confirm('确定删除昵称 "' + nickname + '"？')) {
-                fetch('/profile/', {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: 'nickname=' + encodeURIComponent(nickname)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        alert(data.message);
-                        location.reload();
-                    } else {
-                        alert(data.message);
-                    }
-                })
-                .catch(error => alert('删除失败: ' + error));
-            }
-        }
-
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-    </script>
-</body>
-</html>
+            <!-- Anonymous Nickname Management -->
+            <div class="card shadow mb-4 nicknames-manage">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0">Anonymous Nickname Management</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Add Nickname Form -->
+                    <form method="post" action="{% url 'profile' %}">
+                        {% csrf_token %}
+                        {{ form.as_p }}
+                        <button type="submit" class="btn btn-primary">Add Nickname</button>
+                    </form>
+                    <!-- Nickname List -->
+                    <ul class="list-group mt-3">
+                        {% for nickname in nicknames %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ nickname }}
+                                <!-- Changed to POST Request -->
+                                <form method="post" action="{% url 'profile' %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="nickname" value="{{ nickname }}">
+                                    <input type="hidden" name="action" value="delete">
+                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                </form>
+                            </li>
+                        {% empty %}
+                            <div class="text-center text-muted py-3">No anonymous nicknames yet</div>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

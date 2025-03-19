@@ -1,225 +1,164 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Our Circle - 主页</title>
-    <style>
-        .nav-links {
-            margin-top: 10px;
-        }
-        .nav-links a, .nav-links form {
-            margin-right: 10px;
-            display: inline;
-        }
-        .search-form {
-            margin: 10px 0;
-        }
-        .announcement-list, .post-list, .followed-circles, .weather-section {
-            list-style-type: none;
-            padding: 0;
-        }
-        .weather-section {
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid #ccc;
-        }
-    </style>
-</head>
-<body onload="getLocation()">
-    <h1>Our Circle - 主页</h1>
-    {% if messages %}
-        {% for message in messages %}
-            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
+{% extends "base.html" %}
+{% load static %}
 
-    <div class="nav-links">
-        {% if user.is_authenticated %}
-            <span>欢迎，{{ user.username }}！</span>
-            <a href="{% url 'profile' %}">个人资料</a>
-            {% if user.is_admin %}
-                <a href="{% url 'admin_dashboard' %}">仪表板</a>
-            {% endif %}
-            <form method="post" action="{% url 'logout' %}" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit">退出登录</button>
-            </form>
-        {% else %}
-            <a href="{% url 'login' %}">登录</a>
-            <a href="{% url 'register' %}">注册</a>
-        {% endif %}
+{% block title %}Home - UofGCircle{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid min-vh-100">
+    <div class="row g-3">
+        <!-- Left Column: Bulletin Board + Recommended Topics -->
+        <div class="col-lg-3">
+            <!-- Bulletin Board -->
+            <div class="card mb-3 shadow">
+                <div class="card-header bg-info text-white">
+                    <h5>📢 Public Board (Pinned First)</h5>
+                </div>
+                <div class="card-body overflow-auto" style="max-height: 700px;">
+                    <div class="list-group">
+                        {% for announcement in announcements %}
+                        <a href="{% url 'announcement_detail' announcement.id %}" class="list-group-item list-group-item-action {% if announcement.is_pinned %}list-group-item-warning{% endif %}">
+                            <h6>{{ announcement.title }}</h6>
+                            <small class="text-muted">
+                                {{ announcement.content|truncatechars:40 }}<br>
+                                {{ announcement.created_at|date:"Y-m-d H:i" }}
+                            </small>
+                        </a>
+                        {% empty %}
+                        <div class="text-center text-muted">No announcements</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <!-- Admin Recommended Topics -->
+            <div class="card shadow">
+                <div class="card-header bg-warning">
+                    <h5>🌟 Recommended Topics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for post in recommended_posts %}
+                        <a href="{% url 'post_detail' post.id %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between">
+                                <span>
+                                    {{ post.content|truncatechars:20 }}
+                                    <small class="text-muted d-block mt-1">
+                                        {% if post.is_anonymous %}
+                                            {{ post.nickname|default:"Anonymous User" }}
+                                        {% else %}
+                                            {{ post.user.username }}
+                                        {% endif %}
+                                    </small>
+                                </span>
+                                <span class="badge bg-primary">👍 {{ post.likes }}</span>
+                            </div>
+                        </a>
+                        {% empty %}
+                        <div class="text-center text-muted">No recommendations yet</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Column: Trending Content -->
+        <div class="col-lg-6">
+            <!-- Trending Circles -->
+            <div class="card mb-3 shadow">
+                <div class="card-header bg-success text-white">
+                    <h5>🚀 Trending Circles (By Post Count)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for circle in circles %}
+                        <a href="{% url 'circle_detail' circle.id %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>#{{ circle.name }}</strong>
+                                    <small class="text-muted d-block">{{ circle.description|truncatechars:30 }}</small>
+                                </div>
+                                <span class="badge bg-primary">
+                                    Posts {{ circle.post_set.count }}
+                                </span>
+                            </div>
+                        </a>
+                        {% empty %}
+                        <div class="text-center text-muted">No trending circles yet</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trending Posts -->
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h5>🔥 Trending Posts (By Likes)</h5>
+                    <form class="mt-2">
+                        <input type="text" class="form-control" name="q" placeholder="Search posts..." value="{{ search_query }}">
+                    </form>
+                </div>
+                <div class="card-body overflow-auto" style="max-height: 290px;">
+                    {% for post in popular_posts %}
+                    <div class="card mb-2" id="post-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6>
+                                        <a href="{% url 'post_detail' post.id %}" class="text-decoration-none">
+                                            {{ post.content|truncatechars:40 }}
+                                        </a>
+                                    </h6>
+                                    <small class="text-muted">
+                                        {% if post.is_anonymous %}
+                                            {{ post.nickname|default:"Anonymous User" }}
+                                        {% else %}
+                                            {{ post.user.username }}
+                                        {% endif %}
+                                        · {{ post.circle.name }}
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-success">👍 {{ post.likes }}</span>
+                                    <span class="badge bg-danger">👎 {{ post.dislikes }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center text-muted">No posts yet</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: User Circles -->
+        <div class="col-lg-3 h-100">
+            <div class="card shadow h-100" id="my-circles-card">
+                <div class="card-header bg-primary text-white">
+                    <h5>⭐ My Circles</h5>
+                </div>
+                <div class="card-body">
+                    {% if user.is_authenticated %}
+                    <div class="list-group">
+                        {% for follow in followed_circles %}
+                        <a href="{% url 'circle_detail' follow.id %}" class="list-group-item list-group-item-action">
+                           #{{ follow.name }}
+                        </a>
+                        {% empty %}
+                        <div class="text-center text-muted">Not yet joined any circles</div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        Please <a href="{% url 'login' %}" class="alert-link">log in</a> to view joined circles
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
-
-    <!-- 天气显示 -->
-    <h2>本地天气</h2>
-    <div class="weather-section" id="weather-section">
-        <p>正在加载天气数据...</p>
-    </div>
-
-    <!-- 公告栏 -->
-    <h2>公告栏</h2>
-    <ul class="announcement-list">
-        {% for announcement in announcements %}
-            <li>
-                <a href="{% url 'announcement_detail' announcement.id %}">{{ announcement.title }}</a>
-                - 发布于: {{ announcement.created_at }}
-            </li>
-        {% empty %}
-            <li>暂无公告。</li>
-        {% endfor %}
-    </ul>
-
-    <!-- 搜索框 -->
-    <form class="search-form" method="get" action="{% url 'search' %}">
-        <input type="text" name="search" value="{{ search_query }}" placeholder="搜索圈子或帖子">
-        <button type="submit">搜索</button>
-        {% if search_query and not search_results %}
-            <a href="{% url 'home' %}">清除搜索</a>
-        {% endif %}
-    </form>
-
-    {% if search_results %}
-        <h2>搜索结果</h2>
-        <h3>匹配的圈子</h3>
-        <ul>
-            {% for circle in search_results.circles %}
-                <li>
-                    <a href="{% url 'circle_detail' circle.id %}">{{ circle.name }}</a>
-                    - {{ circle.description }} (帖子数量: {{ circle.post_count }})
-                </li>
-            {% empty %}
-                <li>无匹配圈子。</li>
-            {% endfor %}
-        </ul>
-        <h3>匹配的帖子</h3>
-        <ul>
-            {% for post in search_results.posts %}
-                <li>
-                    <a href="{% url 'post_detail' post.id %}">
-                        {% if post.is_anonymous %}
-                            {{ post.nickname|default:"Anonymous" }}
-                        {% else %}
-                            {{ post.user.username }}
-                        {% endif %}
-                        : {{ post.content|truncatechars:100 }}
-                    </a>
-                    - 评论数: {{ post.comment_count }}
-                </li>
-            {% empty %}
-                <li>无匹配帖子。</li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <h2>最活跃的五个话题圈</h2>
-        <ul>
-            {% for circle in circles %}
-                <li>
-                    <a href="{% url 'circle_detail' circle.id %}">{{ circle.name }}</a>
-                    - {{ circle.description }} (帖子数量: {{ circle.post_count }})
-                </li>
-            {% empty %}
-                <li>暂无活跃话题圈。</li>
-            {% endfor %}
-        </ul>
-
-        <h2>最热门的五个帖子</h2>
-        <ul>
-            {% for post in popular_posts %}
-                <li>
-                    <a href="{% url 'post_detail' post.id %}">
-                        {% if post.is_anonymous %}
-                            {{ post.nickname|default:"Anonymous" }}
-                        {% else %}
-                            {{ post.user.username }}
-                        {% endif %}
-                        : {{ post.content|truncatechars:100 }}
-                    </a>
-                    - 点赞: {{ post.likes }}, 评论: {{ post.comment_count }}
-                </li>
-            {% empty %}
-                <li>暂无热门帖子。</li>
-            {% endfor %}
-        </ul>
-
-        <h2>管理员推荐的五个帖子</h2>
-        <ul>
-            {% for post in recommended_posts %}
-                <li>
-                    <a href="{% url 'post_detail' post.id %}">
-                        {% if post.is_anonymous %}
-                            {{ post.nickname|default:"Anonymous" }}
-                        {% else %}
-                            {{ post.user.username }}
-                        {% endif %}
-                        : {{ post.content|truncatechars:100 }}
-                    </a>
-                    - 发布于: {{ post.created_at }}
-                </li>
-            {% empty %}
-                <li>暂无推荐帖子。</li>
-            {% endfor %}
-        </ul>
-
-        <h2>我关注的圈子</h2>
-        <ul class="followed-circles">
-            {% for circle in followed_circles %}
-                <li>
-                    <a href="{% url 'circle_detail' circle.id %}">{{ circle.name }}</a>
-                    - 帖子数量: {{ circle.post_count }}
-                    <a href="{% url 'unfollow_circle' circle.id %}">取消关注</a>
-                </li>
-            {% empty %}
-                <li>暂无关注的圈子，请前往圈子页面关注。</li>
-            {% endfor %}
-        </ul>
-    {% endif %}
-
-    <a href="{% url 'all_circles' %}">查看所有圈子</a>
-
-    <script>
-        function getLocation() {
-            // 检查 URL 是否已有 lat 和 lon 参数
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('lat') && urlParams.has('lon')) {
-                return;  // 如果已加载位置参数，不再重复请求
-            }
-
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    // 使用 AJAX 获取天气数据
-                    fetch(`{% url 'get_weather' %}?lat=${lat}&lon=${lon}`, {
-                        method: 'GET',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        const weatherSection = document.getElementById('weather-section');
-                        if (data.status === 'success') {
-                            weatherSection.innerHTML = `
-                                <p>地点: ${data.data.name}</p>
-                                <p>温度: ${data.data.temp} °C</p>
-                                <p>天气: ${data.data.description}</p>
-                                <p>湿度: ${data.data.humidity}%</p>
-                                <p>风速: ${data.data.wind_speed} m/s</p>
-                            `;
-                        } else {
-                            weatherSection.innerHTML = `<p>${data.message}</p>`;
-                        }
-                    })
-                    .catch(error => {
-                        document.getElementById('weather-section').innerHTML = "<p>无法加载天气数据，请稍后再试。</p>";
-                    });
-                }, function(error) {
-                    console.error("获取位置失败: ", error);
-                    document.getElementById('weather-section').innerHTML = "<p>无法获取位置，请允许位置访问或稍后再试。</p>";
-                });
-            } else {
-                document.getElementById('weather-section').innerHTML = "<p>浏览器不支持地理位置服务。</p>";
-            }
-        }
-    </script>
-</body>
-</html>
+</div>
+{% endblock %}

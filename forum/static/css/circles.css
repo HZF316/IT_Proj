@@ -1,0 +1,9 @@
+/* circle title */
+.card-header h1 {
+    font-size: 1.8rem;
+}
+
+/* post list */
+.list-group-item h5 {
+    margin-bottom: 0.5rem;
+}

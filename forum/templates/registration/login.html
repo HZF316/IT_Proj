@@ -1,21 +1,53 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>登录 - Our Circle</title>
-</head>
-<body>
-    <h1>登录</h1>
-    {% if messages %}
-        {% for message in messages %}
-            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">登录</button>
-    </form>
-    <p>没有账户？<a href="{% url 'register' %}">注册</a></p>
-    <a href="{% url 'home' %}">返回主页</a>
-</body>
-</html>
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}登录 - UofGCircle{% endblock %}
+
+{% block content %}
+<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center">
+    <div class="row w-100">
+        <div class="col-lg-4 col-md-6 col-sm-8 mx-auto">
+            <!-- 登录卡片 -->
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4 class="mb-0">登录</h4>
+                </div>
+                <div class="card-body">
+                    <!-- 消息提示 -->
+                    {% if messages %}
+                        <div class="alert alert-dismissible fade show" role="alert">
+                            {% for message in messages %}
+                                {% if message.tags == 'success' %}
+                                    <div class="alert-success">{{ message }}</div>
+                                {% elif message.tags == 'error' %}
+                                    <div class="alert-danger">{{ message }}</div>
+                                {% endif %}
+                            {% endfor %}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endif %}
+
+                    <!-- 登录表单 -->
+                    <form method="post" action="{% url 'login' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="username" class="form-label">用户名</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">密码</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">登录</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer text-center">
+                    <small>还没有账号？<a href="{% url 'register' %}">注册</a></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

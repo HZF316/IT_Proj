@@ -1,18 +1,45 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>处理举报 - Our Circle</title>
-</head>
-<body>
-    <h1>处理举报</h1>
-    <p>举报用户: {{ report.user.username }}</p>
-    <p>帖子内容: {{ report.post.content|truncatechars:100 }}</p>
-    <p>举报原因: {{ report.reason }}</p>
-    <p>提交时间: {{ report.created_at }}</p>
-    <form method="post">
-        {% csrf_token %}
-        <button type="submit">标记为已处理</button>
-    </form>
-    <a href="{% url 'admin_dashboard' %}">取消</a>
-</body>
-</html>
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Resolve Report{% endblock %}
+
+{% block content %}
+<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center">
+    <div class="row w-100">
+        <div class="col-lg-6 col-md-8 col-sm-10 mx-auto">
+            <!-- Display Action Feedback Message -->
+            {% if messages %}
+                <div class="alert alert-dismissible fade show" role="alert">
+                    {% for message in messages %}
+                        <div class="alert-{{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endif %}
+
+            <!-- Report Details Card -->
+            <div class="card shadow">
+                <div class="card-header bg-info text-white text-center">
+                    <h4 class="mb-0">Resolve Report</h4>
+                </div>
+                <div class="card-body">
+                    <p><strong>Reporter:</strong> {{ report.user.username }}</p>
+                    <p><strong>Reported Post:</strong> <a href="{% url 'post_detail' report.post.id %}">{{ report.post.title }}</a></p>
+                    <p><strong>Reason for Report:</strong> {{ report.reason }}</p>
+                    <p><strong>Detailed Description:</strong> {{ report.description|default:"None" }}</p>
+                    <p><strong>Reported Time:</strong> {{ report.created_at|date:"Y-m-d H:i" }}</p>
+                    <form method="post" action="{% url 'report_resolve' report.id %}">
+                        {% csrf_token %}
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">Mark as Resolved</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

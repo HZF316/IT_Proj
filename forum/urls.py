@@ -1,10 +1,12 @@
+from django.contrib.auth.views import LogoutView
 from django.urls import path
 from . import views
 
 urlpatterns = [
     path('', views.home, name='home'),
     path('register/', views.register, name='register'),
-#   path('login/', views.custom_login, name='login'),
+    path('accounts/login/', views.custom_login, name='login'),
+    path('accounts/logout/', LogoutView.as_view(), name='logout'),
     path('circle/<int:circle_id>/', views.circle_detail, name='circle_detail'),
     path('circle/<int:circle_id>/post/', views.create_post, name='create_post'),
     path('post/<int:post_id>/', views.post_detail, name='post_detail'),

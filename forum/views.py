@@ -59,7 +59,7 @@ def admin_required(view_func):
     @login_required
     def wrapper(request, *args, **kwargs):
         if not request.user.is_admin:
-            messages.error(request, "您没有管理员权限！")
+            messages.error(request, "You are not admin")
             return redirect('home')
         return view_func(request, *args, **kwargs)
 
@@ -68,7 +68,7 @@ def admin_required(view_func):
 
 @login_required
 def search(request):
-    search_query = request.GET.get('search', '')
+    search_query = request.GET.get('q', '')
     if search_query:
         search_results = {
             'circles': TopicCircle.objects.filter(
@@ -92,10 +92,11 @@ def register(request):
         if form.is_valid():
             user = form.save()
             login(request, user)  # 注册后自动登录
-            messages.success(request, f"欢迎 {user.username}，注册成功！")
+            messages.success(request, f"Welcome {user.username}，register successfully！")
             return redirect('home')
         else:
-            messages.error(request, "注册失败，请检查输入信息。")
+            print(form.errors)
+            messages.error(request, "Registration failed, please try again")
     else:
         form = GUserCreationForm()
     return render(request, 'forum/register.html', {'form': form})
@@ -104,24 +105,20 @@ def register(request):
 # 自定义登录视图（可选，如果你想覆盖默认的）
 def custom_login(request):
     if request.method == 'POST':
-        username = request.POST['username']
-        password = request.POST['password']
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        print(f"Received: username={username}, password={password}")
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            messages.success(request, f"欢迎回来，{user.username}！")
+            messages.success(request, f"Welcome back，{user.username}！")
             return redirect('home')
         else:
-            messages.error(request, "用户名或密码错误。")
-    return render(request, 'forum/templates/registration/templates/forum/login.html')
+            messages.error(request, "Username or password is incorrect")
+    return render(request, 'registration/login.html')
 
 
-#
-# @login_required
-# def circle_detail(request, circle_id):
-#     circle = get_object_or_404(TopicCircle, id=circle_id, is_active=True)
-#     posts = Post.objects.filter(circle=circle).order_by('-created_at')
-#     return render(request, 'forum/circle_detail.html', {'circle': circle, 'posts': posts})
+
 @login_required
 def circle_detail(request, circle_id):
     circle = get_object_or_404(TopicCircle, id=circle_id, is_active=True)
@@ -140,7 +137,7 @@ def circle_detail(request, circle_id):
         comment_count=Count('comment')
     ).order_by('-is_pinned', sort_field)
 
-    # 检查用户是否已关注
+    # check whether user has followed the circle
     is_followed = request.user.is_authenticated and UserCircleFollow.objects.filter(user=request.user,
                                                                                     circle=circle).exists()
 
@@ -167,20 +164,19 @@ def create_post(request, circle_id):
             lon = request.POST.get('lon')
             geolocator = Nominatim(user_agent="our_circle_app")
             location = geolocator.reverse((lat, lon), language='zh-CN').address if lat and lon else None
-            # 这里可以调用 Geocoding API 将经纬度转换为地址
-            location = location or f"Lat: {lat}, Lon: {lon}"  # 简单示例，可替换为真实地址
+            location = location or f"Lat: {lat}, Lon: {lon}"
 
         if is_anonymous and nickname and nickname not in request.user.anonymous_nicknames:
-            messages.error(request, "请使用已绑定的匿名昵称！")
+            messages.error(request, "Please uss a created nickname")
             return redirect('circle_detail', circle_id=circle.id)
         if content:
             Post.objects.create(user=request.user, circle=circle, content=content, is_anonymous=is_anonymous,
                                 nickname=nickname, location=location)
-            messages.success(request, '帖子发布成功！')
+            messages.success(request, 'Post Successfully')
         else:
-            messages.error(request, '内容不能为空！')
+            messages.error(request, 'Content cannot be empty')
         return redirect('circle_detail', circle_id=circle.id)
-    return render(request, 'forum/create_post.html', {'circle': circle})
+    return render(request, 'forum/circle_detail.html', {'circle': circle})
 
 
 @login_required
@@ -188,7 +184,7 @@ def like_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     post.likes += 1
     post.save()
-    messages.success(request, '点赞成功！')
+    messages.success(request, 'Likes Successfully')
     return redirect('circle_detail', circle_id=post.circle.id)
 
 
@@ -197,7 +193,7 @@ def dislike_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     post.dislikes += 1
     post.save()
-    messages.success(request, '已踩！')
+    messages.success(request, 'Unlikes Successfully')
     return redirect('circle_detail', circle_id=post.circle.id)
 
 
@@ -214,21 +210,19 @@ def add_comment(request, post_id):
         if use_location and 'lat' in request.POST and 'lon' in request.POST:
             lat = request.POST.get('lat')
             lon = request.POST.get('lon')
-            # 这里可以调用 Geocoding API 将经纬度转换为地址
             geolocator = Nominatim(user_agent="our_circle_app")
             location = geolocator.reverse((lat, lon), language='zh-CN').address if lat and lon else None
-            # 如果 geopy 失败，可以保留原始格式
-            location = location or f"Lat: {lat}, Lon: {lon}"  # 简单示例，可替换为真实地址
+            location = location or f"Lat: {lat}, Lon: {lon}"
 
         if is_anonymous and nickname and nickname not in request.user.anonymous_nicknames:
-            messages.error(request, "请使用已绑定的匿名昵称！")
+            messages.error(request, "Please uss a created nickname")
             return redirect('post_detail', post_id=post.id)
         if content:
             Comment.objects.create(user=request.user, post=post, content=content, is_anonymous=is_anonymous,
                                    nickname=nickname, location=location)
-            messages.success(request, '评论成功！')
+            messages.success(request, 'Comment Successfully')
         else:
-            messages.error(request, '评论内容不能为空！')
+            messages.error(request, 'Comment cannot be empty')
         return redirect('post_detail', post_id=post.id)
     return render(request, 'forum/add_comment.html', {'post': post})
 
@@ -244,9 +238,9 @@ def report_post(request, post_id):
                 post=post,
                 reason=reason
             )
-            messages.success(request, '举报已提交！')
+            messages.success(request, 'Report Successfully')
         else:
-            messages.error(request, '请提供举报原因！')
+            messages.error(request, 'Please enter a reason')
         return redirect('circle_detail', circle_id=post.circle.id)
     return render(request, 'forum/report_post.html', {'post': post})
 
@@ -281,7 +275,7 @@ def all_circles(request):
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         circle_data = [{
-            'id': circle.id,  # 确保 id 是有效的整数
+            'id': circle.id,
             'name': circle.name,
             'description': circle.description,
             'post_count': circle.post_count
@@ -303,7 +297,7 @@ def all_circles(request):
     })
 
 
-# 个人资料
+
 @login_required
 def profile(request):
     sort_by = request.GET.get('sort', 'created_at_desc')
@@ -316,7 +310,6 @@ def profile(request):
     sort_field = sort_options.get(sort_by, '-created_at')
     user_posts = Post.objects.filter(user=request.user).order_by(sort_field)
 
-    # 获取用户关注的圈子
     followed_circles = TopicCircle.objects.filter(
         usercirclefollow__user=request.user,
         is_active=True
@@ -329,16 +322,16 @@ def profile(request):
             if nickname not in request.user.anonymous_nicknames:
                 request.user.anonymous_nicknames.append(nickname)
                 request.user.save()
-                messages.success(request, f"昵称 '{nickname}' 添加成功！")
+                messages.success(request, f"Nickname '{nickname}' add successfully！")
             else:
-                messages.error(request, "该昵称已存在！")
+                messages.error(request, "Nickname already exists")
     elif request.method == 'DELETE':
         nickname = request.POST.get('nickname')
         if nickname in request.user.anonymous_nicknames:
             request.user.anonymous_nicknames.remove(nickname)
             request.user.save()
-            return JsonResponse({'status': 'success', 'message': f"昵称 '{nickname}' 删除成功！"})
-        return JsonResponse({'status': 'error', 'message': '昵称不存在！'}, status=400)
+            return JsonResponse({'status': 'success', 'message': f"Nickname '{nickname}' delete successfully"})
+        return JsonResponse({'status': 'error', 'message': 'Nickname does not exist'}, status=400)
 
     form = NicknameForm()
     return render(request, 'forum/profile.html', {
@@ -350,20 +343,7 @@ def profile(request):
     })
 
 
-# 自定义装饰器：限制管理员访问
-def admin_required(view_func):
-    @wraps(view_func)
-    @login_required
-    def wrapper(request, *args, **kwargs):
-        if not request.user.is_admin:
-            messages.error(request, "您没有管理员权限！")
-            return redirect('home')
-        return view_func(request, *args, **kwargs)
-
-    return wrapper
-
-
-# 管理员仪表板
+# admin dashboard
 @admin_required
 def admin_dashboard(request):
     reports = Report.objects.filter(is_resolved=False).order_by('-created_at')
@@ -380,7 +360,7 @@ def admin_dashboard(request):
             start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').replace(hour=0, minute=0, second=0)
             end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
             if start_date > end_date:
-                messages.error(request, "起始时间不能晚于结束时间！")
+                messages.error(request, "Start date cannot be greater than end date！")
             else:
                 if stat_type == 'posts':
                     stats = Post.objects.filter(created_at__range=(start_date, end_date)).count()
@@ -389,7 +369,7 @@ def admin_dashboard(request):
                 elif stat_type == 'users':
                     stats = GUser.objects.filter(date_joined__range=(start_date, end_date)).count()
         except ValueError:
-            messages.error(request, "无效的日期格式，请使用 YYYY-MM-DD！")
+            messages.error(request, "Illegal format，Please: YYYY-MM-DD！")
 
     return render(request, 'forum/admin_dashboard.html', {
         'reports': reports,
@@ -402,7 +382,7 @@ def admin_dashboard(request):
     })
 
 
-# 创建圈子
+
 @admin_required
 def circle_create(request):
     if request.method == 'POST':
@@ -411,14 +391,14 @@ def circle_create(request):
             circle = form.save(commit=False)
             circle.created_by = request.user
             circle.save()
-            messages.success(request, f"圈子 '{circle.name}' 创建成功！")
+            messages.success(request, f"Circle '{circle.name}' created successfully")
             return redirect('admin_dashboard')
     else:
         form = TopicCircleForm()
     return render(request, 'forum/circle_create.html', {'form': form})
 
 
-# 编辑圈子
+
 @admin_required
 def circle_edit(request, circle_id):
     circle = get_object_or_404(TopicCircle, id=circle_id)
@@ -426,46 +406,45 @@ def circle_edit(request, circle_id):
         form = TopicCircleForm(request.POST, instance=circle)
         if form.is_valid():
             form.save()
-            messages.success(request, f"圈子 '{circle.name}' 更新成功！")
+            messages.success(request, f"Circle '{circle.name}' updated successfully")
             return redirect('admin_dashboard')
     else:
         form = TopicCircleForm(instance=circle)
     return render(request, 'forum/circle_edit.html', {'form': form, 'circle': circle})
 
 
-# 删除圈子
+
 @admin_required
 def circle_delete(request, circle_id):
     circle = get_object_or_404(TopicCircle, id=circle_id)
     if request.method == 'POST':
         circle_name = circle.name
         circle.delete()
-        messages.success(request, f"圈子 '{circle_name}' 删除成功！")
+        messages.success(request, f"Circle '{circle_name}' deleted successfully")
         return redirect('admin_dashboard')
     return render(request, 'forum/circle_delete.html', {'circle': circle})
 
 
-# 处理举报
 @admin_required
 def report_resolve(request, report_id):
     report = get_object_or_404(Report, id=report_id)
     if request.method == 'POST':
         report.is_resolved = True
         report.save()
-        messages.success(request, "举报已标记为已处理！")
+        messages.success(request, "Report has been resolved")
         return redirect('admin_dashboard')
     return render(request, 'forum/report_resolve.html', {'report': report})
 
 
-# 删除帖子
+# delete post
 @admin_required
 def post_delete(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     if request.method == 'POST':
         post.delete()
-        messages.success(request, "帖子已删除！")
+        messages.success(request, "Post has been deleted")
         return redirect('admin_dashboard')
-    return render(request, 'forum/post_delete.html', {'post': post})
+    return render(request, 'forum/post_detail.html', {'post': post})
 
 
 @admin_required
@@ -476,24 +455,20 @@ def announcement_create(request):
             announcement = form.save(commit=False)
             announcement.created_by = request.user
             announcement.save()
-            messages.success(request, f"公告 '{announcement.title}' 创建成功！")
+            messages.success(request, f"Announcement '{announcement.title}' created successfully")
             return redirect('admin_dashboard')
     else:
         form = AnnouncementForm()
     return render(request, 'forum/announcement_create.html', {'form': form})
 
 
-# 公告详情
-# 公告详情
 def announcement_detail(request, announcement_id):
     announcement = get_object_or_404(Announcement, id=announcement_id)
     if request.user.is_authenticated and request.user.is_admin:
-        # 管理员跳转到管理页面
         return redirect('announcement_manage', announcement_id=announcement.id)
     return render(request, 'forum/announcement_detail.html', {'announcement': announcement})
 
-
-# 公告管理
+#Announcement management
 @admin_required
 def announcement_manage(request, announcement_id):
     announcement = get_object_or_404(Announcement, id=announcement_id)
@@ -503,16 +478,16 @@ def announcement_manage(request, announcement_id):
             form = AnnouncementForm(request.POST, instance=announcement)
             if form.is_valid():
                 form.save()
-                messages.success(request, "公告更新成功！")
+                messages.success(request, "Announcement has been updated")
                 return redirect('admin_dashboard')
         elif action == 'delete':
             announcement.delete()
-            messages.success(request, "公告已删除！")
+            messages.success(request, "Announcement has been deleted")
             return redirect('admin_dashboard')
         elif action == 'toggle_pin':
             announcement.is_pinned = not announcement.is_pinned
             announcement.save()
-            messages.success(request, f"公告已{'置顶' if announcement.is_pinned else '取消置顶'}！")
+            messages.success(request, f"Announcement has been{'pinned' if announcement.is_pinned else 'CANCEL PIN'}！")
             return redirect('admin_dashboard')
     else:
         form = AnnouncementForm(instance=announcement)
@@ -527,12 +502,12 @@ def user_post_delete(request, post_id):
     post = get_object_or_404(Post, id=post_id, user=request.user)  # 确保只能删除自己的帖子
     if request.method == 'POST':
         post.delete()
-        messages.success(request, "帖子已删除！")
+        messages.success(request, "Post has been deleted")
         return redirect('profile')
     return render(request, 'forum/user_post_delete.html', {'post': post})
 
 
-# 帖子详情
+
 @login_required
 def post_detail(request, post_id):
     post = get_object_or_404(Post, id=post_id)
@@ -552,7 +527,7 @@ def post_detail(request, post_id):
     })
 
 
-# 点赞帖子
+#like post
 @login_required
 def like_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
@@ -561,7 +536,7 @@ def like_post(request, post_id):
     return redirect('post_detail', post_id=post.id)
 
 
-# 踩帖子
+# unlike post
 @login_required
 def dislike_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
@@ -570,7 +545,7 @@ def dislike_post(request, post_id):
     return redirect('post_detail', post_id=post.id)
 
 
-# 发表评论
+# make comment
 @login_required
 def add_comment(request, post_id):
     post = get_object_or_404(Post, id=post_id)
@@ -579,18 +554,18 @@ def add_comment(request, post_id):
         is_anonymous = request.POST.get('is_anonymous') == 'on'
         nickname = request.POST.get('nickname') if is_anonymous else None
         if is_anonymous and nickname and nickname not in request.user.anonymous_nicknames:
-            messages.error(request, "请使用已绑定的匿名昵称！")
+            messages.error(request, "Please enter a valid nickname")
             return redirect('post_detail', post_id=post.id)
         if content:
             Comment.objects.create(user=request.user, post=post, content=content, is_anonymous=is_anonymous,
                                    nickname=nickname)
-            messages.success(request, '评论成功！')
+            messages.success(request, 'Comment has been added')
         else:
-            messages.error(request, '评论内容不能为空！')
+            messages.error(request, 'Comment cannot be empty')
     return redirect('post_detail', post_id=post.id)
 
 
-# 举报帖子
+# report post
 @login_required
 def report_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
@@ -598,47 +573,47 @@ def report_post(request, post_id):
         reason = request.POST.get('reason')
         if reason:
             Report.objects.create(user=request.user, post=post, reason=reason)
-            messages.success(request, '举报已提交！')
+            messages.success(request, 'Report has been added')
+            return redirect('post_detail', post_id=post.id)
         else:
-            messages.error(request, '请提供举报原因！')
-    return redirect('post_detail', post_id=post.id)
+            messages.error(request, 'Please enter a reason')
+    return render(request, 'forum/report_post.html', {'post': post})
 
 
-# 用户删除帖子
+
 @login_required
 def user_post_delete(request, post_id):
     post = get_object_or_404(Post, id=post_id, user=request.user)
     if request.method == 'POST':
         post.delete()
-        messages.success(request, "帖子已删除！")
+        messages.success(request, "Post has been deleted")
         return redirect('profile')
     return render(request, 'forum/user_post_delete.html', {'post': post})
 
 
-# 管理员删除帖子
 @admin_required
 def admin_post_delete(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     if request.method == 'POST':
         post.delete()
-        messages.success(request, "帖子已删除！")
+        messages.success(request, "Post has been deleted")
         return redirect('admin_dashboard')
     return render(request, 'forum/post_delete.html', {'post': post})
 
 
 # 置顶帖子
-@admin_required
+@login_required
 def pin_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     if request.method == 'POST':
         post.is_pinned = not post.is_pinned
         post.save()
-        messages.success(request, f"帖子已{'置顶' if post.is_pinned else '取消置顶'}！")
-        return redirect('post_detail', post_id=post.id)
-    return render(request, 'forum/pin_post.html', {'post': post})
+        messages.success(request, f"Post has been {'pinned' if post.is_pinned else 'CANCEL PIN'}！")
+    return redirect('post_detail', post_id=post.id)
 
 
-# 点赞评论
+
+# like comment
 @login_required
 def like_comment(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id)
@@ -647,7 +622,7 @@ def like_comment(request, comment_id):
     return redirect('post_detail', post_id=comment.post.id)
 
 
-# 踩评论
+# unlike comment
 @login_required
 def dislike_comment(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id)
@@ -656,27 +631,27 @@ def dislike_comment(request, comment_id):
     return redirect('post_detail', post_id=comment.post.id)
 
 
-# 举报评论
+# report comment
 @login_required
 def report_comment(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id)
     if request.method == 'POST':
         reason = request.POST.get('reason')
         if reason:
-            Report.objects.create(user=request.user, post=comment.post, reason=f"评论举报: {reason}")
-            messages.success(request, '举报已提交！')
+            Report.objects.create(user=request.user, post=comment.post, reason=f"Report Comment: {reason}")
+            messages.success(request, 'Report has been added')
         else:
-            messages.error(request, '请提供举报原因！')
+            messages.error(request, 'Please enter a reason')
     return redirect('post_detail', post_id=comment.post.id)
 
 
-# 管理员删除评论
+
 @admin_required
 def admin_comment_delete(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id)
     if request.method == 'POST':
         comment.delete()
-        messages.success(request, "评论已删除！")
+        messages.success(request, "Comment has been deleted")
         return redirect('post_detail', post_id=comment.post.id)
     return render(request, 'forum/comment_delete.html', {'comment': comment})
 
@@ -687,7 +662,7 @@ def recommend_post(request, post_id):
     if request.method == 'POST':
         post.is_recommended = not post.is_recommended
         post.save()
-        messages.success(request, f"帖子已{'推荐' if post.is_recommended else '取消推荐'}！")
+        messages.success(request, f"Post has been {'recommended' if post.is_recommended else 'CANCEL RECOMMENDATION'}！")
         return redirect('post_detail', post_id=post.id)
     return render(request, 'forum/recommend_post.html', {'post': post})
 
@@ -697,24 +672,24 @@ def follow_circle(request, circle_id):
     circle = get_object_or_404(TopicCircle, id=circle_id, is_active=True)
     if not UserCircleFollow.objects.filter(user=request.user, circle=circle).exists():
         UserCircleFollow.objects.create(user=request.user, circle=circle)
-        messages.success(request, f"已关注圈子 '{circle.name}'！")
+        messages.success(request, f"Followed Circles '{circle.name}'！")
     return redirect('circle_detail', circle_id=circle.id)
 
 
-# 取消关注圈子
+
 @login_required
 def unfollow_circle(request, circle_id):
     circle = get_object_or_404(TopicCircle, id=circle_id, is_active=True)
     follow = UserCircleFollow.objects.filter(user=request.user, circle=circle)
     if follow.exists():
         follow.delete()
-        messages.success(request, f"已取消关注圈子 '{circle.name}'！")
+        messages.success(request, f"Unfollowed Circle '{circle.name}'!")
     return redirect('circle_detail', circle_id=circle.id)
 
 
-@login_required
+
 def get_weather(request):
-    api_key = "f0ce8dd116d0a235d4a54eaa89c9591f"  # 替换为你的 API 密钥
+    api_key = "f0ce8dd116d0a235d4a54eaa89c9591f"
     lat = request.GET.get('lat')
     lon = request.GET.get('lon')
     weather_data = None
@@ -736,15 +711,15 @@ def get_weather(request):
                 }
             })
         except requests.RequestException as e:
-            return JsonResponse({'status': 'error', 'message': '无法获取天气数据，请稍后再试。'}, status=500)
-    return JsonResponse({'status': 'error', 'message': '缺少位置信息。'}, status=400)
+            return JsonResponse({'status': 'error', 'message': 'Can not get the weather, please try later'}, status=500)
+    return JsonResponse({'status': 'error', 'message': 'No Location Information'}, status=400)
 
 
-@login_required
+
 def geocode(request):
     lat = request.GET.get('lat')
     lon = request.GET.get('lon')
-    api_key = "YOUR_OPENWEATHERMAP_API_KEY"  # 替换为你的 API 密钥
+    api_key = "f0ce8dd116d0a235d4a54eaa89c9591f"
 
     if lat and lon:
         url = f"https://api.openweathermap.org/geo/1.0/reverse?lat={lat}&lon={lon}&limit=1&appid={api_key}"
@@ -755,9 +730,9 @@ def geocode(request):
             if data and len(data) > 0:
                 return JsonResponse({
                     'status': 'success',
-                    'location': data[0].get('name', '未知地点')
+                    'location': data[0].get('name', 'Unknown Location')
                 })
-            return JsonResponse({'status': 'error', 'message': '无法解析位置信息。'}, status=400)
+            return JsonResponse({'status': 'error', 'message': 'Can not resolve location'}, status=400)
         except requests.RequestException as e:
-            return JsonResponse({'status': 'error', 'message': '无法获取位置信息，请稍后再试。'}, status=500)
-    return JsonResponse({'status': 'error', 'message': '缺少位置信息。'}, status=400)
+            return JsonResponse({'status': 'error', 'message': 'Can not get the weather, please try later'}, status=500)
+    return JsonResponse({'status': 'error', 'message': 'No Location Information'}, status=400)

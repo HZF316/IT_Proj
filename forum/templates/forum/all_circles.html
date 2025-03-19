@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Our Circle - 所有圈子</title>
+    <title>Our Circle - All Circles</title>
     <style>
         .pagination {
             margin-top: 20px;
@@ -20,126 +20,34 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <h1>所有活跃话题圈</h1>
+    <h1>All Active Topic Circles</h1>
     {% if messages %}
         {% for message in messages %}
             <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
         {% endfor %}
     {% endif %}
 
-    <!-- 搜索框 -->
+    <!-- Search Box -->
     <form class="search-form" id="search-form">
-        <input type="text" name="search" value="{{ search_query }}" placeholder="搜索圈子名称或描述">
-        <button type="submit">搜索</button>
+        <input type="text" name="search" value="{{ search_query }}" placeholder="Search circle name or description">
+        <button type="submit">Search</button>
         {% if search_query %}
-            <a href="{% url 'all_circles' %}">清除搜索</a>
+            <a href="{% url 'all_circles' %}">Clear Search</a>
         {% endif %}
     </form>
 
-    <!-- 排序下拉菜单 -->
+    <!-- Sort Dropdown Menu -->
     <form class="sort-form" id="sort-form">
-        <label for="sort">排序方式:</label>
+        <label for="sort">Sort By:</label>
         <select name="sort" id="sort">
-            <option value="name" {% if sort_by == 'name' %}selected{% endif %}>按名称（升序）</option>
-            <option value="name_desc" {% if sort_by == 'name_desc' %}selected{% endif %}>按名称（降序）</option>
-            <option value="post_count" {% if sort_by == 'post_count' %}selected{% endif %}>按帖子数量（降序）</option>
-            <option value="post_count_asc" {% if sort_by == 'post_count_asc' %}selected{% endif %}>按帖子数量（升序）</option>
+            <option value="name" {% if sort_by == 'name' %}selected{% endif %}>By Name (Ascending)</option>
+            <option value="name_desc" {% if sort_by == 'name_desc' %}selected{% endif %}>By Name (Descending)</option>
+            <option value="post_count" {% if sort_by == 'post_count' %}selected{% endif %}>By Post Count (Descending)</option>
+            <option value="post_count_asc" {% if sort_by == 'post_count_asc' %}selected{% endif %}>By Post Count (Ascending)</option>
         </select>
         {% if search_query %}
             <input type="hidden" name="search" value="{{ search_query }}">
         {% endif %}
     </form>
 
-    <!-- 圈子列表 -->
-    <ul class="circle-list" id="circle-list">
-        {% for circle in page_obj %}
-            <li>
-                <a href="{% url 'circle_detail' circle.id %}">{{ circle.name }}</a>
-                - {{ circle.description }} (帖子数量: {{ circle.post_count }})
-            </li>
-        {% endfor %}
-        {% if not page_obj %}
-            <li>暂无活跃话题圈{% if search_query %}（可能由于搜索条件无匹配结果）{% endif %}。</li>
-        {% endif %}
-    </ul>
-
-    <!-- 分页导航 -->
-    <div class="pagination" id="pagination">
-        {% if page_obj.has_previous %}
-            <a href="?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">上一页</a>
-        {% endif %}
-        <span>第 {{ page_obj.number }} 页 / 共 {{ page_obj.paginator.num_pages }} 页</span>
-        {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">下一页</a>
-        {% endif %}
-    </div>
-
-    <a href="{% url 'home' %}">返回主页</a>
-
-<script>
-    $(document).ready(function() {
-        $('#search-form').on('submit', function(e) {
-            e.preventDefault();
-            updateCircles();
-        });
-
-        $('#sort').on('change', function() {
-            updateCircles();
-        });
-
-        $('#pagination a').on('click', function(e) {
-            e.preventDefault();
-            let url = $(this).attr('href');
-            updateCircles(url);
-        });
-
-        function updateCircles(url = window.location.pathname) {
-            let searchQuery = $('input[name="search"]').val() || '';
-            let sortBy = $('#sort').val() || 'name';
-            let page = new URLSearchParams(window.location.search).get('page') || 1;
-
-            $.ajax({
-                url: url,
-                method: 'GET',
-                data: {
-                    search: searchQuery,
-                    sort: sortBy,
-                    page: page
-                },
-                success: function(response) {
-                    $('#circle-list').empty();
-                    if (response.circles.length > 0) {
-                        $.each(response.circles, function(index, circle) {
-                            // 调试：打印 circle.id
-                            console.log('Circle ID:', circle.id);
-                            // 确保 circle.id 存在且有效
-                            if (circle.id) {
-                                let circleUrl = "{% url 'circle_detail' 0 %}".replace('0', circle.id);
-                                $('#circle-list').append(
-                                    `<li><a href="${circleUrl}">${circle.name}</a> - ${circle.description} (帖子数量: ${circle.post_count})</li>`
-                                );
-                            } else {
-                                console.error('Invalid Circle ID:', circle);
-                            }
-                        });
-                    } else {
-                        $('#circle-list').append(`<li>暂无活跃话题圈${searchQuery ? '（可能由于搜索条件无匹配结果）' : ''}</li>`);
-                    }
-
-                    $('#pagination').html(
-                        (response.has_previous ? `<a href="?page=${response.page_number - 1}&sort=${response.sort_by}&search=${response.search_query}">上一页</a>` : '') +
-                        `<span>第 ${response.page_number} 页 / 共 ${response.num_pages} 页</span>` +
-                        (response.has_next ? `<a href="?page=${response.page_number + 1}&sort=${response.sort_by}&search=${response.search_query}">下一页</a>` : '')
-                    );
-                },
-                error: function(xhr, status, error) {
-                    alert('加载失败: ' + error);
-                }
-            });
-        }
-
-        updateCircles();
-    });
-</script>
-</body>
-</html>
+    <!-- Circle

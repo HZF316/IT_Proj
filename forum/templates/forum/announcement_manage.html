@@ -1,36 +1,67 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>管理公告 - Our Circle</title>
-</head>
-<body>
-    <h1>管理公告 - {{ announcement.title }}</h1>
-    {% if messages %}
-        {% for message in messages %}
-            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
+{% extends "base.html" %}
+{% load static %}
 
-    <h2>修改公告</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <input type="hidden" name="action" value="update">
-        <button type="submit">保存</button>
-    </form>
+{% block title %}Manage Announcement - UofGCircle{% endblock %}
 
-    <h2>操作</h2>
-    <form method="post" style="display:inline;">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="toggle_pin">
-        <button type="submit">{{ announcement.is_pinned|yesno:"取消置顶,置顶" }}</button>
-    </form>
-    <form method="post" style="display:inline;" onsubmit="return confirm('确定删除公告？此操作不可撤销！');">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="delete">
-        <button type="submit">删除</button>
-    </form>
+{% block content %}
+<div class="container-fluid min-vh-100">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Message Prompt -->
+            {% if messages %}
+                <div class="alert alert-dismissible fade show" role="alert">
+                    {% for message in messages %}
+                        <div class="alert-{{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endif %}
 
-    <a href="{% url 'admin_dashboard' %}">返回仪表板</a>
-</body>
-</html>
+            <!-- Announcement Management Form -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Manage Announcement: {{ announcement.title }}</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'announcement_manage' announcement.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="title" name="title" value="{{ announcement.title }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Content</label>
+                            <textarea class="form-control" id="content" name="content" rows="5" required>{{ announcement.content }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Pin Status</label>
+                            <div>
+                                <input type="checkbox" id="is_pinned" name="is_pinned" {% if announcement.is_pinned %}checked{% endif %}>
+                                <label for="is_pinned">Pinned</label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Update</button>
+                    </form>
+                </div>
+                <div class="card-footer">
+                    <!-- Delete Announcement Button -->
+                    <form method="post" action="{% url 'announcement_manage' announcement.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete">
+                        <button type="submit" class="btn btn-danger">Delete Announcement</button>
+                    </form>
+                    <!-- Pin/Unpin Button -->
+                    <form method="post" action="{% url 'announcement_manage' announcement.id %}" class="d-inline ms-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="toggle_pin">
+                        <button type="submit" class="btn btn-warning">
+                            {% if announcement.is_pinned %}Unpin{% else %}Pin{% endif %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

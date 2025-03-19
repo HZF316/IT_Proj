@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>发布帖子 - Our Circle</title>
+    <title>Create Post - Our Circle</title>
     <style>
         .location-section {
             margin: 10px 0;
@@ -9,7 +9,7 @@
     </style>
 </head>
 <body>
-    <h1>在 {{ circle.name }} 发布帖子</h1>
+    <h1>Create a Post in {{ circle.name }}</h1>
     {% if messages %}
         {% for message in messages %}
             <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
@@ -18,27 +18,27 @@
 
     <form method="post">
         {% csrf_token %}
-        <textarea name="content" required placeholder="请输入帖子内容"></textarea><br>
-        <label><input type="checkbox" name="is_anonymous"> 匿名发布</label><br>
-        <input type="text" name="nickname" placeholder="匿名昵称（若选择匿名）" {% if not user.anonymous_nicknames %}disabled{% endif %}><br>
+        <textarea name="content" required placeholder="Please enter post content"></textarea><br>
+        <label><input type="checkbox" name="is_anonymous"> Post Anonymously</label><br>
+        <input type="text" name="nickname" placeholder="Anonymous Nickname (if anonymous)" {% if not user.anonymous_nicknames %}disabled{% endif %}><br>
 
-        <!-- 定位选项 -->
+        <!-- Location Options -->
         <div class="location-section">
-            <label><input type="checkbox" name="use_location" id="use_location"> 使用当前位置</label>
-            <button type="button" id="get_location" onclick="getLocation()">获取位置</button>
+            <label><input type="checkbox" name="use_location" id="use_location"> Use Current Location</label>
+            <button type="button" id="get_location" onclick="getLocation()">Get Location</button>
             <p id="location_status"></p>
             <input type="hidden" name="lat" id="lat">
             <input type="hidden" name="lon" id="lon">
         </div>
 
-        <button type="submit">发布</button>
+        <button type="submit">Publish</button>
     </form>
-    <a href="{% url 'circle_detail' circle.id %}">返回圈子</a>
+    <a href="{% url 'circle_detail' circle.id %}">Back to Circle</a>
 
     <script>
         function getLocation() {
             if (!navigator.geolocation) {
-                document.getElementById('location_status').innerText = "浏览器不支持地理位置服务。";
+                document.getElementById('location_status').innerText = "Browser does not support geolocation services.";
                 return;
             }
             if (document.getElementById('use_location').checked) {
@@ -48,14 +48,14 @@
                         const lon = position.coords.longitude;
                         document.getElementById('lat').value = lat;
                         document.getElementById('lon').value = lon;
-                        document.getElementById('location_status').innerText = `位置获取成功: Lat ${lat}, Lon ${lon}`;
+                        document.getElementById('location_status').innerText = `Location retrieved successfully: Lat ${lat}, Lon ${lon}`;
                     },
                     function(error) {
-                        document.getElementById('location_status').innerText = "无法获取位置，请检查权限或手动输入。";
+                        document.getElementById('location_status').innerText = "Unable to retrieve location, please check permissions or enter manually.";
                     }
                 );
             } else {
-                document.getElementById('location_status').innerText = "请先勾选使用当前位置选项。";
+                document.getElementById('location_status').innerText = "Please check the 'Use Current Location' option first.";
             }
         }
     </script>

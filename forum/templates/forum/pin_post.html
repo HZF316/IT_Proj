@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>置顶帖子 - Our Circle</title>
+    <title>Pin Post - Our Circle</title>
 </head>
 <body>
-    <h1>置顶帖子</h1>
-    <p>确定要{% if post.is_pinned %}取消置顶{% else %}置顶{% endif %}帖子 "{{ post.content|truncatechars:100 }}" 吗？</p>
+    <h1>Pin Post</h1>
+    <p>Are you sure you want to {% if post.is_pinned %}unpin{% else %}pin{% endif %} the post "{{ post.content|truncatechars:100 }}"?</p>
     <form method="post">
         {% csrf_token %}
-        <button type="submit">确认</button>
+        <button type="submit">Confirm</button>
     </form>
-    <a href="{% url 'post_detail' post.id %}">取消</a>
+    <a href="{% url 'post_detail' post.id %}">Cancel</a>
 </body>
 </html>

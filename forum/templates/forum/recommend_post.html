@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>推荐帖子 - Our Circle</title>
+    <title>Recommend Post - Our Circle</title>
 </head>
 <body>
-    <h1>推荐帖子</h1>
-    <p>确定要{% if post.is_recommended %}取消推荐{% else %}推荐{% endif %}帖子 "{{ post.content|truncatechars:100 }}" 吗？</p>
+    <h1>Recommend Post</h1>
+    <p>Are you sure you want to {% if post.is_recommended %}unrecommend{% else %}recommend{% endif %} the post "{{ post.content|truncatechars:100 }}"?</p>
     <form method="post">
         {% csrf_token %}
-        <button type="submit">确认</button>
+        <button type="submit">Confirm</button>
     </form>
-    <a href="{% url 'post_detail' post.id %}">取消</a>
+    <a href="{% url 'post_detail' post.id %}">Cancel</a>
 </body>
 </html>

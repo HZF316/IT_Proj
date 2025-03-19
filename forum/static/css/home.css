@@ -1,0 +1,50 @@
+/* only for my circle card */
+#my-circles-card {
+    height: 80vh;
+    min-height: 780px;
+    margin-bottom: 1rem;
+}
+
+/* card style */
+.card.mb-2 {
+    height: 120px !important;
+    min-height: unset;
+    overflow: hidden !important;
+}
+
+.card.mb-2 .card-body {
+    padding: 0.75rem !important;
+}
+
+/* fit mobile device */
+@media (max-width: 992px) {
+    #my-circles-card {
+        height: auto !important;
+        min-height: unset;
+    }
+    .card.mb-2 {
+        height: 120px !important;
+    }
+}
+
+/* public style for all cards */
+.card {
+    min-height: 380px;
+    margin-bottom: 1rem;
+    transition: transform 0.2s;
+}
+
+
+.card:hover {
+    transform: translateY(-3px);
+}
+
+.list-group-item-action:hover {
+    background-color: #f8f9fa;
+    transform: translateX(5px);
+    transition: all 0.2s;
+}
+
+
+.min-vh-100 { min-height: 100vh; }
+.h-100 { height: 100%; }

@@ -1,122 +1,163 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>管理员仪表板 - Our Circle</title>
-    <style>
-        .report-list, .circle-list, .announcement-list, .stat-section {
-            list-style-type: none;
-            padding: 0;
-        }
-        .report-item, .circle-item, .announcement-item {
-            margin: 10px 0;
-        }
-        .stat-section {
-            margin-top: 20px;
-            border: 1px solid #ccc;
-            padding: 10px;
-        }
-        .stat-buttons button {
-            margin-right: 10px;
-        }
-    </style>
-</head>
-<body>
-    <h1>管理员仪表板</h1>
-    {% if messages %}
-        {% for message in messages %}
-            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
+{% extends "base.html" %}
+{% load static %}
 
-    <h2>未处理举报</h2>
-    <ul class="report-list">
-        {% for report in reports %}
-            <li class="report-item">
-                用户 {{ report.user.username }} 举报帖子:
-                <a href="{% url 'circle_detail' report.post.circle.id %}">
-                    {{ report.post.content|truncatechars:50 }}
-                </a>
-                - 原因: {{ report.reason }} - 提交于: {{ report.created_at }}
-                <a href="{% url 'report_resolve' report.id %}">标记为已处理</a> |
-                <a href="{% url 'post_delete' report.post.id %}">删除帖子</a>
-            </li>
-        {% empty %}
-            <li>暂无未处理举报。</li>
-        {% endfor %}
-    </ul>
+{% block title %}Admin Dashboard - UofGCircle{% endblock %}
 
-    <h2>所有圈子</h2>
-    <a href="{% url 'circle_create' %}">创建新圈子</a>
-    <ul class="circle-list">
-        {% for circle in circles %}
-            <li class="circle-item">
-                <a href="{% url 'circle_detail' circle.id %}">{{ circle.name }}</a>
-                - {{ circle.description|truncatechars:50 }} (活跃: {{ circle.is_active|yesno:"是,否" }})
-                <a href="{% url 'circle_edit' circle.id %}">编辑</a> |
-                <a href="{% url 'circle_delete' circle.id %}">删除</a>
-            </li>
-        {% empty %}
-            <li>暂无圈子。</li>
-        {% endfor %}
-    </ul>
-
-    <h2>公告管理</h2>
-    <a href="{% url 'announcement_create' %}">创建新公告</a>
-    <ul class="announcement-list">
-        {% for announcement in announcements %}
-            <li class="announcement-item">
-                <a href="{% url 'announcement_manage' announcement.id %}">{{ announcement.title }}</a>
-                - {{ announcement.created_at }}
-                {% if announcement.is_pinned %}
-                    (已置顶)
-                {% endif %}
-            </li>
-        {% empty %}
-            <li>暂无公告。</li>
-        {% endfor %}
-    </ul>
-
-    <h2>统计数据</h2>
-    <div class="stat-section">
-        <label for="start_date">起始时间 (YYYY-MM-DD):</label>
-        <input type="date" id="start_date" name="start_date" value="{% if start_date %}{{ start_date|date:'Y-m-d' }}{% endif %}">
-        <label for="end_date">结束时间 (YYYY-MM-DD):</label>
-        <input type="date" id="end_date" name="end_date" value="{% if end_date %}{{ end_date|date:'Y-m-d' }}{% endif %}">
-        <div class="stat-buttons">
-            <button onclick="getStats('posts')">New Posts</button>
-            <button onclick="getStats('comments')">New Comments</button>
-            <button onclick="getStats('users')">New Users</button>
+{% block content %}
+<div class="container-fluid min-vh-100">
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0">Data Analysis</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" action="{% url 'admin_dashboard' %}" class="mb-3">
+                        <div class="mb-3">
+                            <label for="start_date" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="end_date" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="stat_type" class="form-label">Type</label>
+                            <select class="form-select" id="stat_type" name="stat_type">
+                                <option value="posts" {% if stat_type == 'posts' %}selected{% endif %}>Num of Posts</option>
+                                <option value="comments" {% if stat_type == 'comments' %}selected{% endif %}>Num of Comments</option>
+                                <option value="users" {% if stat_type == 'users' %}selected{% endif %}>Num of Users</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Search</button>
+                    </form>
+                    {% if stats is not None %}
+                        <p>Result: {{ stats }}</p>
+                    {% else %}
+                        <p class="text-muted">Please Set Search Conditions!</p>
+                    {% endif %}
+                </div>
+            </div>
         </div>
-        {% if stats is not None %}
-            <p>从
-                {% if start_date %}{{ start_date|date:'Y-m-d' }}{% else %}无指定起始时间{% endif %}
-                到
-                {% if end_date %}{{ end_date|date:'Y-m-d' }}{% else %}无指定结束时间{% endif %}
-                的统计数据:</p>
-            {% if stat_type == 'posts' %}
-                <p>新帖子数量: {{ stats }}</p>
-            {% endif %}
-            {% if stat_type == 'comments' %}
-                <p>新评论数量: {{ stats }}</p>
-            {% endif %}
-            {% if stat_type == 'users' %}
-                <p>新用户数量: {{ stats }}</p>
-            {% endif %}
-        {% endif %}
+
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Announcement Management</h5>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'announcement_create' %}" class="btn btn-primary mb-3">Create New Announcement</a>
+                    {% if announcements %}
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Content</th>
+                                    <th>Create At</th>
+                                    <th>Pin</th>
+                                    <th>Operation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for announcement in announcements %}
+                                    <tr>
+                                        <td>{{ announcement.title }}</td>
+                                        <td>{{ announcement.content|truncatechars:30 }}</td>
+                                        <td>{{ announcement.created_at|date:"Y-m-d H:i" }}</td>
+                                        <td>{{ announcement.is_pinned|yesno:"Yes, No" }}</td>
+                                        <td>
+                                            <a href="{% url 'announcement_manage' announcement.id %}" class="btn btn-sm btn-warning">Management</a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-muted">No Announcement</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card shadow mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Circle Management</h5>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'circle_create' %}" class="btn btn-primary mb-3">Create New Circle</a>
+                    {% if circles %}
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Circle Name</th>
+                                    <th>Description</th>
+                                    <th>Create At</th>
+                                    <th>Operation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for circle in circles %}
+                                    <tr>
+                                        <td>{{ circle.name }}</td>
+                                        <td>{{ circle.description|truncatechars:30 }}</td>
+                                        <td>{{ circle.created_at|date:"Y-m-d H:i" }}</td>
+                                        <td>
+                                            <a href="{% url 'circle_edit' circle.id %}" class="btn btn-sm btn-warning">Edit</a>
+                                            <form method="post" action="{% url 'circle_delete' circle.id %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-muted">No Circle</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Unresolved Report</h5>
+                </div>
+                <div class="card-body">
+                    {% if reports %}
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Report User</th>
+                                    <th>Report Post</th>
+                                    <th>Report Reason</th>
+                                    <th>Report At</th>
+                                    <th>Operation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for report in reports %}
+                                    <tr>
+                                        <td>{{ report.user.username }}</td>
+                                        <td><a href="{% url 'post_detail' report.post.id %}">{{ report.post.content|truncatechars:20 }}</a></td>
+                                        <td>{{ report.reason }}</td>
+                                        <td>{{ report.created_at|date:"Y-m-d H:i" }}</td>
+                                        <td>
+                                            <form method="post" action="{% url 'report_resolve' report.id %}">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-success">Mark as Resolved</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-muted">No Report</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
-
-    <a href="{% url 'home' %}">返回主页</a>
-
-    <script>
-        function getStats(statType) {
-            const startDate = document.getElementById('start_date').value;
-            const endDate = document.getElementById('end_date').value;
-            if (!startDate || !endDate) {
-                alert('请选择起始时间和结束时间！');
-                return;
-            }
-            window.location.href = `{% url 'admin_dashboard' %}?start_date=${startDate}&end_date=${endDate}&stat_type=${statType}`;
-        }
-    </script>
-</body>
-</html>
+</div>
+{% endblock %}

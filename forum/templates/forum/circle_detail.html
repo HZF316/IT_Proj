@@ -1,94 +1,146 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>{{ circle.name }} - Our Circle</title>
-    <style>
-        .post-list {
-            list-style-type: none;
-            padding: 0;
-        }
-        .post-item {
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            padding: 10px;
-        }
-        .sort-form {
-            margin: 10px 0;
-        }
-    </style>
-</head>
-<body>
-    <h1>{{ circle.name }}</h1>
-    <p>{{ circle.description }}</p>
-    <p>创建者: {{ circle.created_by.username|default:"未知" }}</p>
-    {% if messages %}
-        {% for message in messages %}
-            <p {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
+{% extends "base.html" %}
+{% load static %}
 
-    {% if user.is_authenticated %}
-        <a href="{% url 'create_post' circle.id %}">发帖</a>
-        {% if is_followed %}
-            <a href="{% url 'unfollow_circle' circle.id %}">取消关注</a>
-        {% else %}
-            <a href="{% url 'follow_circle' circle.id %}">关注圈子</a>
-        {% endif %}
-    {% else %}
-        <p>请<a href="{% url 'login' %}">登录</a>后发帖或关注。</p>
-    {% endif %}
+{% block title %}{{ circle.name }} - UofGCircle{% endblock %}
 
-    <h2>帖子列表</h2>
-    <form class="sort-form" method="get">
-        <label for="sort">排序方式:</label>
-        <select name="sort" id="sort" onchange="this.form.submit()">
-            <option value="created_at_desc" {% if sort_by == 'created_at_desc' %}selected{% endif %}>按时间（最新优先）</option>
-            <option value="created_at_asc" {% if sort_by == 'created_at_asc' %}selected{% endif %}>按时间（最早优先）</option>
-            <option value="likes_desc" {% if sort_by == 'likes_desc' %}selected{% endif %}>按点赞数（降序）</option>
-            <option value="likes_asc" {% if sort_by == 'likes_asc' %}selected{% endif %}>按点赞数（升序）</option>
-            <option value="comments_desc" {% if sort_by == 'comments_desc' %}selected{% endif %}>按评论数（降序）</option>
-            <option value="comments_asc" {% if sort_by == 'comments_asc' %}selected{% endif %}>按评论数（升序）</option>
-        </select>
-    </form>
+{% block head %}
+    <link rel="stylesheet" href="{% static 'css/circles.css' %}">
+{% endblock %}
 
-    <ul class="post-list">
-        {% for post in posts %}
-            <li class="post-item">
-                <h3>
-                    <a href="{% url 'post_detail' post.id %}">
-                        {% if post.is_anonymous %}
-                            {{ post.nickname|default:"Anonymous" }}
-                        {% else %}
-                            {{ post.user.username }}
-                        {% endif %}
-                        : {{ post.content|truncatechars:100 }}
+{% block content %}
+<div class="container-fluid min-vh-100">
+    <div class="row">
+        <!-- Left Column: Circle Info and Post List -->
+        <div class="col-lg-9">
+            <!-- Circle Info Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">{{ circle.name }}</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">{{ circle.description }}</p>
+                </div>
+            </div>
+
+            <!-- Error or Success Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Post List -->
+            <div class="list-group">
+                {% for post in posts %}
+                    <a href="{% url 'post_detail' post.id %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6>{{ post.content|truncatechars:50 }}</h6>
+                                <small class="text-muted">
+                                    {% if post.is_anonymous %}
+                                        {{ post.nickname|default:"Anonymous User" }}
+                                    {% else %}
+                                        {{ post.user.username }}
+                                    {% endif %}
+                                    · {{ post.created_at|date:"Y-m-d H:i" }}
+                                    {% if post.location %}
+                                        · Location: {{ post.location }}
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
                     </a>
-                </h3>
-                {% if post.location %} <p>位置: {{ post.location }}</p> {% endif %}
-                <p>发布于: {{ post.created_at }}</p>
-                <p>点赞: {{ post.likes }} | 踩: {{ post.dislikes }} | 评论: {{ post.comment_count }}</p>
-                {% if post.is_pinned %} <p>(已置顶)</p> {% endif %}
-                <h4>评论:</h4>
-                <ul>
-                    {% for comment in post.comment_set.all %}
-                        <li>
-                            {% if comment.is_anonymous %}
-                                {{ comment.nickname|default:"Anonymous" }}
-                            {% else %}
-                                {{ comment.user.username }}
-                            {% endif %}
-                            : {{ comment.content|truncatechars:50 }} - {{ comment.created_at }}
-                        </li>
-                    {% empty %}
-                        <li>暂无评论。</li>
-                    {% endfor %}
-                </ul>
-            </li>
-        {% empty %}
-            <li>该圈子暂无帖子。</li>
-        {% endfor %}
-    </ul>
+                {% empty %}
+                    <div class="text-center text-muted py-3">No Posts Yet</div>
+                {% endfor %}
+            </div>
+        </div>
 
-    <a href="{% url 'home' %}">返回主页</a>
-</body>
-</html>
+        <!-- Right Column: Create Post -->
+        <div class="col-lg-3">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Create Post</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'create_post' circle.id %}">
+                        {% csrf_token %}
+                        <!-- Post Content -->
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Post Content</label>
+                            <textarea class="form-control" id="content" name="content" rows="5" required></textarea>
+                        </div>
+                        <!-- Anonymous Option -->
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" id="is_anonymous" name="is_anonymous">
+                            <label class="form-check-label" for="is_anonymous">Post Anonymously</label>
+                        </div>
+                        <!-- Anonymous Nickname Selection -->
+                        {% if user.anonymous_nicknames %}
+                            <div class="mb-3" id="nickname_field" style="display:none;">
+                                <label for="nickname" class="form-label">Select Nickname</label>
+                                <select class="form-select" id="nickname" name="nickname">
+                                    {% for nickname in user.anonymous_nicknames %}
+                                        <option value="{{ nickname }}">{{ nickname }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        {% endif %}
+                        <!-- Use Location Option -->
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" id="use_location" name="use_location">
+                            <label class="form-check-label" for="use_location">Use Location</label>
+                        </div>
+                        <!-- Hidden Fields: Latitude and Longitude -->
+                        <input type="hidden" id="lat" name="lat">
+                        <input type="hidden" id="lon" name="lon">
+                        <!-- Submit Button -->
+                        <button type="submit" class="btn btn-primary w-100">Publish</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript: Control Nickname Display and Location Functionality -->
+<script>
+    // Control Anonymous Nickname Display
+    document.getElementById('is_anonymous').addEventListener('change', function() {
+        var nicknameField = document.getElementById('nickname_field');
+        if (nicknameField) {
+            if (this.checked) {
+                nicknameField.style.display = 'block';
+            } else {
+                nicknameField.style.display = 'none';
+            }
+        }
+    });
+
+    // Control Location Functionality
+    document.getElementById('use_location').addEventListener('change', function() {
+        var latField = document.getElementById('lat');
+        var lonField = document.getElementById('lon');
+        if (this.checked) {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    latField.value = position.coords.latitude;
+                    lonField.value = position.coords.longitude;
+                }, function(error) {
+                    console.error('Error getting location:', error);
+                    alert('Unable to retrieve location information, please try again later.');
+                    this.checked = false;  // Uncheck
+                });
+            } else {
+                alert('Your browser does not support geolocation.');
+                this.checked = false;  // Uncheck
+            }
+        } else {
+            latField.value = '';
+            lonField.value = '';
+        }
+    });
+</script>
+{% endblock %}

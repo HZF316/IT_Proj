@@ -1,0 +1,10 @@
+/* post content */
+.card-header h1 {
+    font-size: 1.8rem;
+}
+
+/* comment */
+.list-group-item {
+    border-left: none;
+    border-right: none;
+}
