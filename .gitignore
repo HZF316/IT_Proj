@@ -1,0 +1,24 @@
+# Python 相关
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+*.env
+
+# Django 相关
+db.sqlite3
+*.log
+
+# 临时文件
+*.swp
+*.swo
+*~
+
+# IDE 相关
+.idea/
+*.iml
+
+# macOS 相关
+.DS_Store
