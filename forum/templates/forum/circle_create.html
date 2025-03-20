@@ -33,6 +33,13 @@
                             <label for="description" class="form-label">Description</label>
                             <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
                         </div>
+                        <div class="mb-3">
+                            <label for="is_active" class="form-label">Active Status</label>
+                            <select class="form-select" id="is_active" name="is_active">
+                                <option value="true" selected>Active</option>
+                                <option value="false">Inactive</option>
+                            </select>
+                        </div>
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary">Create</button>
                         </div>

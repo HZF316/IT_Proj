@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}登录 - UofGCircle{% endblock %}
+{% block title %}Login - UofGCircle{% endblock %}
 
 {% block content %}
 <div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center">
     <div class="row w-100">
         <div class="col-lg-4 col-md-6 col-sm-8 mx-auto">
-            <!-- 登录卡片 -->
+            <!-- Login Card -->
             <div class="card shadow">
                 <div class="card-header bg-primary text-white text-center">
-                    <h4 class="mb-0">登录</h4>
+                    <h4 class="mb-0">Login</h4>
                 </div>
                 <div class="card-body">
-                    <!-- 消息提示 -->
+                    <!--  Message Prompt -->
                     {% if messages %}
                         <div class="alert alert-dismissible fade show" role="alert">
                             {% for message in messages %}
@@ -27,24 +27,24 @@
                         </div>
                     {% endif %}
 
-                    <!-- 登录表单 -->
+                    <!-- Login Form -->
                     <form method="post" action="{% url 'login' %}">
                         {% csrf_token %}
                         <div class="mb-3">
-                            <label for="username" class="form-label">用户名</label>
+                            <label for="username" class="form-label">username</label>
                             <input type="text" class="form-control" id="username" name="username" required>
                         </div>
                         <div class="mb-3">
-                            <label for="password" class="form-label">密码</label>
+                            <label for="password" class="form-label">password</label>
                             <input type="password" class="form-control" id="password" name="password" required>
                         </div>
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">登录</button>
+                            <button type="submit" class="btn btn-primary">Login</button>
                         </div>
                     </form>
                 </div>
                 <div class="card-footer text-center">
-                    <small>还没有账号？<a href="{% url 'register' %}">注册</a></small>
+                    <small>Don't have an account?<a href="{% url 'register' %}">Sign Up</a></small>
                 </div>
             </div>
         </div>

@@ -85,13 +85,13 @@ def search(request):
                   {'search_results': search_results, 'search_query': search_query})
 
 
-# 注册视图
+# register view
 def register(request):
     if request.method == 'POST':
         form = GUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user)  # 注册后自动登录
+            login(request, user)  # Automatically Log In After Registration
             messages.success(request, f"Welcome {user.username}，register successfully！")
             return redirect('home')
         else:
@@ -102,7 +102,7 @@ def register(request):
     return render(request, 'forum/register.html', {'form': form})
 
 
-# 自定义登录视图（可选，如果你想覆盖默认的）
+# Custom Login View (Optional, if you want to override the default)
 def custom_login(request):
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -499,7 +499,7 @@ def announcement_manage(request, announcement_id):
 
 @login_required
 def user_post_delete(request, post_id):
-    post = get_object_or_404(Post, id=post_id, user=request.user)  # 确保只能删除自己的帖子
+    post = get_object_or_404(Post, id=post_id, user=request.user)  # Ensure That Users Can Only Delete Their Own Posts
     if request.method == 'POST':
         post.delete()
         messages.success(request, "Post has been deleted")
@@ -601,7 +601,7 @@ def admin_post_delete(request, post_id):
     return render(request, 'forum/post_delete.html', {'post': post})
 
 
-# 置顶帖子
+# pin post
 @login_required
 def pin_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
@@ -703,7 +703,7 @@ def get_weather(request):
             return JsonResponse({
                 'status': 'success',
                 'data': {
-                    'name': weather_data.get('name', '未知地点'),
+                    'name': weather_data.get('name', 'Unknown Location'),
                     'temp': weather_data['main']['temp'],
                     'description': weather_data['weather'][0]['description'],
                     'humidity': weather_data['main']['humidity'],

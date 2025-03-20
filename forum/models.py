@@ -12,7 +12,6 @@ class GUser(AbstractUser):
     def __str__(self):
         return self.username
 
-# 话题圈模型
 class TopicCircle(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
@@ -23,7 +22,6 @@ class TopicCircle(models.Model):
     def __str__(self):
         return self.name
 
-# 帖子模型
 class Post(models.Model):
     user = models.ForeignKey(GUser, on_delete=models.CASCADE)
     circle = models.ForeignKey(TopicCircle, on_delete=models.CASCADE)
@@ -60,7 +58,6 @@ class Comment(models.Model):
     class Meta:
         ordering = ['-created_at']
 
-# 举报模型
 class Report(models.Model):
     user = models.ForeignKey(GUser, on_delete=models.CASCADE)
     post = models.ForeignKey(Post, on_delete=models.CASCADE)
