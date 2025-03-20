@@ -19,9 +19,39 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted">{{ circle.description }}</p>
+                    <!-- Follow/Unfollow Button -->
+                    {% if user.is_authenticated %}
+                        {% if is_followed %}
+                            <form method="post" action="{% url 'unfollow_circle' circle.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-danger">Unfollow</button>
+                            </form>
+                        {% else %}
+                            <form method="post" action="{% url 'follow_circle' circle.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-primary">Follow</button>
+                            </form>
+                        {% endif %}
+                    {% endif %}
                 </div>
             </div>
-
+            <!-- Sort Options -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>Post List</h5>
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        Sort By: {{ sort_by|title }}
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                        <li><a class="dropdown-item" href="?sort=created_at_desc">Newest First</a></li>
+                        <li><a class="dropdown-item" href="?sort=created_at_asc">Oldest First</a></li>
+                        <li><a class="dropdown-item" href="?sort=likes_desc">Most Likes</a></li>
+                        <li><a class="dropdown-item" href="?sort=likes_asc">Fewest Likes</a></li>
+                        <li><a class="dropdown-item" href="?sort=comments_desc">Most Comments</a></li>
+                        <li><a class="dropdown-item" href="?sort=comments_asc">Fewest Comments</a></li>
+                    </ul>
+                </div>
+            </div>
             <!-- Error or Success Messages -->
             {% if messages %}
                 {% for message in messages %}
@@ -50,6 +80,11 @@
                                     {% endif %}
                                 </small>
                             </div>
+                            <div>
+                                <span class="badge bg-success">👍 {{ post.likes }}</span>
+                                <span class="badge bg-danger">👎 {{ post.dislikes }}</span>
+                                <span class="badge bg-primary">💬 {{ post.comment_count }}</span>
+                            </div>
                         </div>
                     </a>
                 {% empty %}
@@ -72,7 +107,7 @@
                             <label for="content" class="form-label">Post Content</label>
                             <textarea class="form-control" id="content" name="content" rows="5" required></textarea>
                         </div>
-                        <!-- Anonymous Option -->
+                        <!-- Anonymous Posting -->
                         <div class="form-check mb-3">
                             <input type="checkbox" class="form-check-input" id="is_anonymous" name="is_anonymous">
                             <label class="form-check-label" for="is_anonymous">Post Anonymously</label>
@@ -88,7 +123,7 @@
                                 </select>
                             </div>
                         {% endif %}
-                        <!-- Use Location Option -->
+                        <!-- Use Location -->
                         <div class="form-check mb-3">
                             <input type="checkbox" class="form-check-input" id="use_location" name="use_location">
                             <label class="form-check-label" for="use_location">Use Location</label>
@@ -107,7 +142,7 @@
 
 <!-- JavaScript: Control Nickname Display and Location Functionality -->
 <script>
-    // Control Anonymous Nickname Display
+    // Control nickname display
     document.getElementById('is_anonymous').addEventListener('change', function() {
         var nicknameField = document.getElementById('nickname_field');
         if (nicknameField) {
@@ -119,7 +154,7 @@
         }
     });
 
-    // Control Location Functionality
+    // Control location functionality
     document.getElementById('use_location').addEventListener('change', function() {
         var latField = document.getElementById('lat');
         var lonField = document.getElementById('lon');
