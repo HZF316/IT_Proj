@@ -87,9 +87,9 @@ WSGI_APPLICATION = 'our_circle.wsgi.application'
 #     }
 # }
 DATABASES = {
-    'default': dj_database_url.config(default='sqlite:///db.sqlite3')
+    'default': dj_database_url.config(default='postgres://ub6vu61i9i2adp:pff8ec14934adfc5486817f841f38d8be25e3405acdb124d5ee75f48ee7d9ceef@c3gtj1dt5vh48j.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/d4423op8jsd7ap')
 }
-
+# postgres://ub6vu61i9i2adp:pff8ec14934adfc5486817f841f38d8be25e3405acdb124d5ee75f48ee7d9ceef@c3gtj1dt5vh48j.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/d4423op8jsd7ap
 if 'DATABASE_URL' not in os.environ:
     DATABASES['default'] = {
         'ENGINE': 'django.db.backends.sqlite3',
